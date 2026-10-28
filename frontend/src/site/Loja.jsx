@@ -129,7 +129,7 @@ export default function Loja({ modo = 'inicio' }) {
   return (
     <div className="loja">
       {menuAberto && <div className="loja-fundo" onClick={() => setMenuAberto(false)} />}
-      <aside className={`loja-menu ${menuAberto ? 'aberto' : ''}`} aria-label="Menu da loja">
+      <aside className={`loja-menu rola-discreto ${menuAberto ? 'aberto' : ''}`} aria-label="Menu da loja">
         <Link to="/" className="loja-logo" onClick={() => setMenuAberto(false)}><Marca variante="horizontal" /></Link>
         <nav>
           <Link to="/" className={modo === 'inicio' && !termo ? 'ativo' : ''} onClick={() => { setMenuAberto(false); setBusca(''); }}>

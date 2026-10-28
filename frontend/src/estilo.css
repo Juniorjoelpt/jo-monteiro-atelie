@@ -57,7 +57,20 @@
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scroll-padding-top: 16px; scrollbar-width: thin; scrollbar-color: #E7B89C transparent; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* Barras de rolagem finas, na cor da marca (no Windows a padrão é grossa e cinza) */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #E7B89C; border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--terra-vivo); }
+
+/* Menus laterais que rolam sozinhos: a barra só aparece com o mouse em cima, e a rolagem não "vaza" para a página */
+.rola-discreto { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.rola-discreto:hover, .rola-discreto:focus-within { scrollbar-color: #E7B89C transparent; }
+.rola-discreto::-webkit-scrollbar-thumb { background-color: transparent; }
+.rola-discreto:hover::-webkit-scrollbar-thumb, .rola-discreto:focus-within::-webkit-scrollbar-thumb { background-color: #E7B89C; }
 body {
   margin: 0;
   background: var(--fundo);
@@ -195,6 +208,7 @@ select.entrada { padding-right: 36px; }
 .lateral {
   flex: 0 0 260px; background: var(--oliva-menu); border-radius: 40px; padding: 26px 16px;
   display: flex; flex-direction: column; gap: 18px; box-shadow: var(--sombra); position: sticky; top: 24px;
+  max-height: calc(100vh - 48px); overflow-y: auto; overscroll-behavior: contain;
 }
 .lateral-perfil { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
 .avatar {
@@ -259,7 +273,7 @@ select.entrada { padding-right: 36px; }
 
 @media (max-width: 900px) {
   .app { padding: 14px; gap: 14px; }
-  .lateral { position: fixed; inset: 0 auto 0 0; width: 280px; z-index: 60; border-radius: 0 32px 32px 0; transform: translateX(-110%); transition: transform .2s ease; overflow-y: auto; top: 0; }
+  .lateral { position: fixed; inset: 0 auto 0 0; width: 280px; z-index: 60; border-radius: 0 32px 32px 0; transform: translateX(-110%); transition: transform .2s ease; overflow-y: auto; top: 0; max-height: none; }
   .lateral.aberta { transform: none; }
   .menu-movel { display: inline-flex; }
   .topo h1 { font-size: 34px; }
@@ -602,7 +616,7 @@ select.entrada { padding-right: 36px; }
 .loja .titulo-secao { font-size: 40px; }
 
 /* Menu lateral */
-.loja-menu { position: sticky; top: 0; height: 100vh; overflow-y: auto; background: #fff; border-right: 1px solid var(--borda-loja); padding: 18px 14px 22px; display: flex; flex-direction: column; gap: 14px; scrollbar-width: thin; }
+.loja-menu { position: sticky; top: 0; height: 100vh; overflow-y: auto; background: #fff; border-right: 1px solid var(--borda-loja); padding: 18px 14px 22px; display: flex; flex-direction: column; gap: 14px; }
 .loja-logo .logo { width: 196px; height: auto; margin: 0 auto 4px; }
 .loja-menu nav { display: flex; flex-direction: column; gap: 2px; }
 .loja-menu nav a, .loja-menu nav button { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 12px; border: 0; border-radius: 12px; background: transparent; color: var(--marrom); font: inherit; font-size: 14.5px; font-weight: 600; text-decoration: none; text-align: left; cursor: pointer; }
@@ -614,7 +628,7 @@ select.entrada { padding-right: 36px; }
 .loja-promo p:first-child { font-family: var(--titulo); font-size: 26px; font-weight: 800; line-height: .95; text-transform: uppercase; }
 .loja-promo .cursiva { font-size: 30px; line-height: 1; margin-top: 4px; color: var(--terra-texto); }
 .loja-promo .logo { position: absolute; right: -2px; bottom: -48px; width: 70px; filter: drop-shadow(3px 6px 6px rgba(120, 50, 10, .2)); }
-.loja-promo p { position: relative; z-index: 1; max-width: calc(100% - 52px); }
+.loja-promo p { position: relative; z-index: 1; }
 .loja-menu-rodape { display: flex; flex-direction: column; gap: 4px; }
 .loja-menu-rodape a { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; color: var(--marrom-2); font-size: 14px; font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
 .loja-menu-rodape a:hover { background: #FFF1E8; color: var(--marrom); }

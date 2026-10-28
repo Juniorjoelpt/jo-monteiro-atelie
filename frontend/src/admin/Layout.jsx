@@ -57,7 +57,7 @@ export default function Layout() {
   return (
     <div className="app">
       {aberto && <div className="fundo-menu" onClick={() => setAberto(false)} />}
-      <aside className={`lateral ${aberto ? 'aberta' : ''}`} aria-label="Menu do sistema">
+      <aside className={`lateral rola-discreto ${aberto ? 'aberta' : ''}`} aria-label="Menu do sistema">
         <div className="lateral-perfil">
           <Link to="/admin" aria-label="Painel do ateliê"><Marca variante="empilhada" decorativa style={{ width: 176 }} /></Link>
           <p style={{ fontSize: 18, fontWeight: 800 }}>Olá, {primeiroNome(nome) || 'Jô'}!</p>

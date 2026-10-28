@@ -282,6 +282,17 @@ O Flyway aplica sozinho as mudanças no banco, sem apagar dados.
 
 ## Abrir no celular (mesma rede Wi-Fi)
 
+O jeito mais fácil: com o backend rodando no NetBeans, na pasta `frontend` rode
+
+```
+npm run celular
+```
+
+Ele mostra o endereço com o IP do computador (ex.: `http://192.168.1.38:5173/admin`) e um QR Code: é só apontar a câmera do celular.
+Na primeira vez, libere a porta no firewall (passo 2 abaixo).
+
+Passo a passo manual:
+
 1. No computador, descubra o IP: `ipconfig` (linha "Endereço IPv4", ex.: 192.168.0.15).
 2. Libere a porta no firewall do Windows (PowerShell **como administrador**, uma vez só):
    ```

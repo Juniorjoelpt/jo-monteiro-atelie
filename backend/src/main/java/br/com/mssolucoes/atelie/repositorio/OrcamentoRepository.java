@@ -20,4 +20,6 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Long> {
     List<Orcamento> findByClienteIdOrderByCriadoEmDesc(Long clienteId);
 
     long countByStatusIn(Collection<StatusOrcamento> status);
+
+    boolean existsByProdutoId(Long produtoId);
 }

@@ -74,6 +74,8 @@ public final class Dtos {
             @NotBlank(message = "Escolha o tipo de peça.") @Size(max = 80) String tipoPeca,
             /** Peça do catálogo (quando o pedido sai do botão "Pedir orçamento" de uma peça). */
             Long produtoId,
+            /** Peças da sacola do site (várias de uma vez). */
+            @Size(max = 30, message = "A sacola pode ter até 30 peças diferentes.") List<@jakarta.validation.Valid ItemSacolaReq> itens,
             @Min(value = 1, message = "A quantidade mínima é 1.") @Max(value = 5000, message = "Quantidade muito alta: fale com o ateliê pelo WhatsApp.") Integer quantidade,
             @Size(max = 1000, message = "Personalização de até 1000 caracteres.") String personalizacao,
             @Size(max = 160) String medidas,
@@ -103,7 +105,16 @@ public final class Dtos {
                                 String cores, LocalDate dataDesejada, String detalhes, BigDecimal valorProposto,
                                 StatusOrcamento status, Origem origem, LocalDateTime criadoEm, Long encomendaId,
                                 Long produtoId, String produtoNome, int quantidade, String personalizacao,
-                                List<FotoOrcamentoResp> fotos) {
+                                List<FotoOrcamentoResp> fotos, List<ItemOrcamentoResp> itens) {
+    }
+
+    public record ItemSacolaReq(
+            @NotNull(message = "Peça não informada.") Long produtoId,
+            @NotNull @Min(value = 1, message = "A quantidade mínima é 1.") @Max(value = 5000, message = "Quantidade muito alta.") Integer quantidade) {
+    }
+
+    /** precoReferencia = preço do catálogo hoje (unitário), só para a Jô ter uma base; pode vir vazio. */
+    public record ItemOrcamentoResp(Long produtoId, String nome, int quantidade, BigDecimal precoReferencia) {
     }
 
     public record FotoOrcamentoResp(Long id, String url) {
@@ -458,8 +469,9 @@ public final class Dtos {
 
     // ---------- Site e painel ----------
 
+    /** maisPedidos = ids das peças do catálogo mais pedidas nos últimos meses (só a ordem, sem números). */
     public record SitePublico(ConfiguracaoDto atelie, List<PortfolioResp> portfolio,
-                              List<DepoimentoResp> depoimentos, List<ItemCatalogo> catalogo) {
+                              List<DepoimentoResp> depoimentos, List<ItemCatalogo> catalogo, List<Long> maisPedidos) {
     }
 
     public record Barra(String rotulo, BigDecimal valor) {

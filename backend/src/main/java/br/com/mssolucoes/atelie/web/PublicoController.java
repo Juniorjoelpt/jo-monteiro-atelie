@@ -42,7 +42,7 @@ public class PublicoController {
     @GetMapping("/site")
     public SitePublico site() {
         return new SitePublico(configuracao.dto(), portfolio.publicados(),
-                depoimentos.publicados(), catalogo.publico());
+                depoimentos.publicados(), catalogo.publico(), catalogo.maisPedidos());
     }
 
     @GetMapping("/catalogo")

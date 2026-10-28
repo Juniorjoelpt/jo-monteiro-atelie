@@ -121,6 +121,62 @@ class OrcamentoOnlineEArteTest {
     }
 
     @Test
+    void sacolaDoSiteViraOrcamentoComVariasPecasEMaisPedidosAparecemNoSite() throws Exception {
+        long caneca = id(enviar(post("/api/produtos"), """
+                {"nome":"Caneca com foto","frente":"PORCELANA","horasMaoObra":0.5,"precoVenda":45}""", status().isCreated()));
+        long caderneta = id(enviar(post("/api/produtos"), """
+                {"nome":"Caderneta A5","frente":"PAPELARIA","horasMaoObra":1,"precoVenda":35}""", status().isCreated()));
+        long fora = id(enviar(post("/api/produtos"), """
+                {"nome":"Fora do catálogo","frente":"PAPELARIA","horasMaoObra":1}""", status().isCreated()));
+        enviar(put("/api/produtos/" + caneca + "/catalogo"), "{\"noCatalogo\":true}", status().isOk());
+        enviar(put("/api/produtos/" + caderneta + "/catalogo"), "{\"noCatalogo\":true}", status().isOk());
+
+        String dados = """
+                {"nome":"Bia","whatsapp":"98981110000","tipoPeca":"Sacola","personalizacao":"Nome: Bia",
+                 "itens":[{"produtoId":%d,"quantidade":2},{"produtoId":%d,"quantidade":1},{"produtoId":%d,"quantidade":1},
+                          {"produtoId":%d,"quantidade":3}]}""".formatted(caneca, caderneta, fora, caneca);
+        mvc.perform(multipart("/api/publico/orcamentos").file(new MockMultipartFile("dados", "", "application/json", dados.getBytes())))
+                .andExpect(status().isCreated());
+        JsonNode o = ler("/api/orcamentos").get(0);
+        assertThat(o.get("tipoPeca").asText()).isEqualTo("Sacola: 2 peças do catálogo");
+        assertThat(o.get("quantidade").asInt()).isEqualTo(6);
+        assertThat(o.get("itens")).hasSize(2);
+        assertThat(o.get("itens").get(0).get("nome").asText()).isEqualTo("Caneca com foto");
+        assertThat(o.get("itens").get(0).get("quantidade").asInt()).isEqualTo(5);      // 2 + 3 somados
+        assertThat(o.get("itens").get(0).get("precoReferencia").decimalValue()).isEqualByComparingTo("45");
+
+        // Uma peça só na sacola: vira a peça do pedido
+        mvc.perform(multipart("/api/publico/orcamentos").file(new MockMultipartFile("dados", "", "application/json", """
+                {"nome":"Rui","whatsapp":"98981110001","tipoPeca":"Sacola","itens":[{"produtoId":%d,"quantidade":4}]}
+                """.formatted(caderneta).getBytes()))).andExpect(status().isCreated());
+        JsonNode rui = ler("/api/orcamentos").get(0);
+        assertThat(rui.get("produtoNome").asText()).isEqualTo("Caderneta A5");
+        assertThat(rui.get("quantidade").asInt()).isEqualTo(4);
+        assertThat(rui.get("itens")).isEmpty();
+
+        // Aprovar a sacola: a lista de peças vai para as observações da encomenda
+        JsonNode enc = enviar(post("/api/orcamentos/" + id(o) + "/aprovar"), """
+                {"descricao":"Kit da Bia","frente":"PRESENTE","valorTotal":260,"valorSinal":0}""", status().isOk());
+        assertThat(enc.get("observacoes").asText()).contains("5× Caneca com foto", "1× Caderneta A5");
+
+        // A peça pedida não pode mais ser excluída (tem histórico)
+        enviar(delete("/api/produtos/" + caderneta), null, status().isBadRequest());
+
+        // Mais pedidos: a caneca da encomenda aprovada aparece no site; peça fora do catálogo não
+        enviar(post("/api/encomendas"), """
+                {"clienteId":%d,"descricao":"x","frente":"PAPELARIA","produtoId":%d,"quantidade":9,"valorTotal":1,"valorSinal":0}
+                """.formatted(cliente, fora), status().isCreated());
+        JsonNode site = json.readTree(mvc.perform(get("/api/publico/site")).andReturn().getResponse().getContentAsString());
+        assertThat(site.get("maisPedidos")).isEmpty();                             // encomenda aprovada não tinha peça (sacola)
+        enviar(post("/api/encomendas"), """
+                {"clienteId":%d,"descricao":"Canecas","frente":"PORCELANA","produtoId":%d,"quantidade":3,"valorTotal":135,"valorSinal":0}
+                """.formatted(cliente, caneca), status().isCreated());
+        site = json.readTree(mvc.perform(get("/api/publico/site")).andReturn().getResponse().getContentAsString());
+        assertThat(site.get("maisPedidos")).hasSize(1);
+        assertThat(site.get("maisPedidos").get(0).asLong()).isEqualTo(caneca);
+    }
+
+    @Test
     void arteVaiPeloLinkClientePedeAjusteDepoisAprovaEHistoricoFica() throws Exception {
         long enc = id(enviar(post("/api/encomendas"), """
                 {"clienteId":%d,"descricao":"Caneca Dia das Mães","frente":"PORCELANA","valorTotal":60,"valorSinal":0,

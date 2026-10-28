@@ -31,10 +31,15 @@ public class OrcamentoService {
     private final ClienteService clientes;
     private final ProdutoRepository produtos;
     private final ArmazenamentoService armazenamento;
+    private final OrcamentoItemRepository itens;
+    private final PrecificacaoService precificacao;
 
     public OrcamentoService(OrcamentoRepository repo, OrcamentoFotoRepository fotos, EncomendaRepository encomendas,
                             EncomendaFotoRepository fotosEncomenda, EncomendaService encomendaService,
-                            ClienteService clientes, ProdutoRepository produtos, ArmazenamentoService armazenamento) {
+                            ClienteService clientes, ProdutoRepository produtos, ArmazenamentoService armazenamento,
+                            OrcamentoItemRepository itens, PrecificacaoService precificacao) {
+        this.itens = itens;
+        this.precificacao = precificacao;
         this.repo = repo;
         this.fotos = fotos;
         this.encomendas = encomendas;
@@ -72,15 +77,34 @@ public class OrcamentoService {
         if (validos.size() > MAX_FOTOS_SITE) {
             throw new RegraNegocioException("Envie no máximo " + MAX_FOTOS_SITE + " fotos de referência.");
         }
+        // Sacola: só peças que estão no catálogo do site; a mesma peça repetida soma as quantidades
+        java.util.LinkedHashMap<Long, Integer> sacola = new java.util.LinkedHashMap<>();
+        if (r.itens() != null) {
+            r.itens().forEach(i -> sacola.merge(i.produtoId(), i.quantidade(), Integer::sum));
+        }
+        java.util.Map<Long, Produto> daSacola = new java.util.HashMap<>();
+        produtos.findAllById(sacola.keySet()).stream().filter(p -> p.isAtivo() && p.isNoCatalogo())
+                .forEach(p -> daSacola.put(p.getId(), p));
+        sacola.keySet().retainAll(daSacola.keySet());
+
         Orcamento o = new Orcamento();
         o.setNome(r.nome().trim());
         o.setWhatsapp(Texto.whatsapp(r.whatsapp()));
         o.setTipoPeca(r.tipoPeca().trim());
+        o.setQuantidade(r.quantidade() == null ? 1 : r.quantidade());
         // Só aceita peça que está no catálogo do site
         if (r.produtoId() != null) {
             produtos.findById(r.produtoId()).filter(p -> p.isAtivo() && p.isNoCatalogo()).ifPresent(o::setProduto);
         }
-        o.setQuantidade(r.quantidade() == null ? 1 : r.quantidade());
+        if (sacola.size() == 1) {
+            // Uma peça só: fica como a peça do pedido, igual ao botão "Pedir orçamento desta peça"
+            var unico = sacola.entrySet().iterator().next();
+            o.setProduto(daSacola.get(unico.getKey()));
+            o.setQuantidade(unico.getValue());
+        } else if (sacola.size() > 1) {
+            o.setTipoPeca(("Sacola: " + sacola.size() + " peças do catálogo"));
+            o.setQuantidade(sacola.values().stream().mapToInt(Integer::intValue).sum());
+        }
         o.setPersonalizacao(Texto.limpar(r.personalizacao()));
         o.setMedidas(Texto.limpar(r.medidas()));
         o.setCores(Texto.limpar(r.cores()));
@@ -89,6 +113,15 @@ public class OrcamentoService {
         o.setOrigem(Origem.SITE);
         o.setStatus(StatusOrcamento.NOVO);
         repo.save(o);
+        if (sacola.size() > 1) {
+            sacola.forEach((id, qtd) -> {
+                OrcamentoItem item = new OrcamentoItem();
+                item.setOrcamento(o);
+                item.setProduto(daSacola.get(id));
+                item.setQuantidade(qtd);
+                itens.save(item);
+            });
+        }
 
         // Salva as fotos; se alguma falhar, apaga as já gravadas (a transação desfaz o pedido)
         List<String> salvos = new ArrayList<>();
@@ -172,7 +205,11 @@ public class OrcamentoService {
         e.setValorSinal(sinal);
         e.setPrazoEntrega(r.prazoEntrega() != null ? r.prazoEntrega() : o.getDataDesejada());
         e.setStatus(sinal.signum() == 0 ? StatusEncomenda.EM_PRODUCAO : StatusEncomenda.AGUARDANDO_SINAL);
-        e.setObservacoes(o.getDetalhes());
+        List<OrcamentoItem> pecas = itens.findByOrcamentoIdOrderByIdAsc(id);
+        String listaPecas = pecas.isEmpty() ? null : "Peças do pedido: " + String.join(", ",
+                pecas.stream().map(i -> i.getQuantidade() + "× " + i.getProduto().getNome()).toList()) + ".";
+        e.setObservacoes(listaPecas == null ? o.getDetalhes()
+                : o.getDetalhes() == null ? listaPecas : listaPecas + "\n" + o.getDetalhes());
         String pers = Texto.limpar(r.personalizacao());
         e.setPersonalizacao(pers != null ? pers : o.getPersonalizacao());
         EncomendaService.definirSeTemArte(e, r.precisaArte() == null || r.precisaArte());
@@ -198,6 +235,7 @@ public class OrcamentoService {
         }
         List<OrcamentoFoto> lista = fotos.findByOrcamentoIdOrderByIdAsc(id);
         fotos.deleteAll(lista);
+        itens.deleteByOrcamentoId(id);
         repo.delete(o);
         lista.forEach(f -> armazenamento.excluirPrivada(f.getArquivo()));
     }
@@ -245,10 +283,20 @@ public class OrcamentoService {
                 : fotos.findByOrcamentoIdOrderByIdAsc(o.getId()).stream()
                 .map(f -> new FotoOrcamentoResp(f.getId(), "/api/orcamentos/fotos/" + f.getId() + "/arquivo")).toList();
         Produto p = o.getProduto();
+        List<ItemOrcamentoResp> pecas = List.of();
+        if (o.getId() != null) {
+            var daSacola = itens.findByOrcamentoIdOrderByIdAsc(o.getId());
+            if (!daSacola.isEmpty()) {
+                var par = precificacao.parametros();
+                pecas = daSacola.stream().map(i -> new ItemOrcamentoResp(i.getProduto().getId(), i.getProduto().getNome(),
+                        i.getQuantidade(), i.getProduto().isMostrarPreco()
+                        ? precificacao.calcular(i.getProduto(), par).precoAtual() : null)).toList();
+            }
+        }
         return new OrcamentoResp(o.getId(), o.getCliente() == null ? null : o.getCliente().getId(), o.getNome(),
                 o.getWhatsapp(), o.getTipoPeca(), o.getMedidas(), o.getCores(), o.getDataDesejada(), o.getDetalhes(),
                 o.getValorProposto(), o.getStatus(), o.getOrigem(), o.getCriadoEm(), encomendaId,
                 p == null ? null : p.getId(), p == null ? null : p.getNome(), o.getQuantidade(), o.getPersonalizacao(),
-                lista);
+                lista, pecas);
     }
 }

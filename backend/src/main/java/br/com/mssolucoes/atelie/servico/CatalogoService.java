@@ -29,9 +29,15 @@ public class CatalogoService {
     private final ProdutoService produtoService;
     private final PrecificacaoService precificacao;
     private final ArmazenamentoService armazenamento;
+    private final br.com.mssolucoes.atelie.repositorio.EncomendaRepository encomendas;
+    private final br.com.mssolucoes.atelie.repositorio.VendaRepository vendas;
 
     public CatalogoService(ProdutoRepository produtos, ProdutoFotoRepository fotos, ProdutoService produtoService,
-                           PrecificacaoService precificacao, ArmazenamentoService armazenamento) {
+                           PrecificacaoService precificacao, ArmazenamentoService armazenamento,
+                           br.com.mssolucoes.atelie.repositorio.EncomendaRepository encomendas,
+                           br.com.mssolucoes.atelie.repositorio.VendaRepository vendas) {
+        this.encomendas = encomendas;
+        this.vendas = vendas;
         this.produtos = produtos;
         this.fotos = fotos;
         this.produtoService = produtoService;
@@ -52,6 +58,23 @@ public class CatalogoService {
                             p.isProntaEntrega(), p.isProntaEntrega() ? p.getEstoque() : 0, p.getPrazoProducao(),
                             p.getFotos().stream().map(f -> "/uploads/" + f.getArquivo()).toList());
                 }).toList();
+    }
+
+    /** Até 8 peças do catálogo mais pedidas (encomendas + pronta-entrega) nos últimos 6 meses. */
+    @Transactional(readOnly = true)
+    public List<Long> maisPedidos() {
+        java.time.LocalDate desde = java.time.LocalDate.now().minusMonths(6);
+        java.util.Map<Long, Long> pecas = new java.util.HashMap<>();
+        for (Object[] l : encomendas.pecasPorProduto(desde.atStartOfDay())) {
+            pecas.merge((Long) l[0], ((Number) l[1]).longValue(), Long::sum);
+        }
+        for (Object[] l : vendas.pecasPorProduto(desde)) {
+            pecas.merge((Long) l[0], ((Number) l[1]).longValue(), Long::sum);
+        }
+        java.util.Set<Long> noCatalogo = new java.util.HashSet<>(publico().stream().map(ItemCatalogo::id).toList());
+        return pecas.entrySet().stream().filter(e -> noCatalogo.contains(e.getKey()))
+                .sorted(java.util.Map.Entry.<Long, Long>comparingByValue().reversed())
+                .limit(8).map(java.util.Map.Entry::getKey).toList();
     }
 
     @Transactional

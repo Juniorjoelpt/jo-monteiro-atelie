@@ -27,6 +27,14 @@ public interface EncomendaRepository extends JpaRepository<Encomenda, Long> {
 
     java.util.Optional<Encomenda> findByCodigoArte(String codigoArte);
 
+    /** [produtoId, peças] das encomendas não canceladas criadas desde a data. */
+    @org.springframework.data.jpa.repository.Query("""
+            select e.produto.id, sum(e.quantidade) from Encomenda e
+            where e.produto is not null and e.status <> br.com.mssolucoes.atelie.dominio.Enums.StatusEncomenda.CANCELADA
+              and e.criadoEm >= :desde
+            group by e.produto.id""")
+    List<Object[]> pecasPorProduto(@org.springframework.data.repository.query.Param("desde") java.time.LocalDateTime desde);
+
     @EntityGraph(attributePaths = "cliente")
     List<Encomenda> findByStatusInAndStatusArte(Collection<StatusEncomenda> status, StatusArte arte);
 

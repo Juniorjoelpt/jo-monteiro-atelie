@@ -169,6 +169,22 @@ function Detalhe({ orcamento: o, aoFechar, aoEditar, aoMudar }) {
         <Info rotulo="Valor proposto" valor={o.valorProposto != null ? moeda(o.valorProposto) : '—'} />
         <div className="inteiro"><Info rotulo="Detalhes" valor={o.detalhes || '—'} /></div>
       </div>
+      {o.itens?.length > 0 && (
+        <div style={{ marginTop: 18 }}>
+          <p className="forte" style={{ marginBottom: 8 }}>Peças da sacola do site</p>
+          <ul className="sacola-resumo">
+            {o.itens.map((i) => (
+              <li key={i.produtoId}>
+                <span className="nome">{i.nome}</span>
+                <span className="qtd">{i.quantidade}×</span>
+                <span className="valor">{i.precoReferencia != null ? moeda(Number(i.precoReferencia) * i.quantidade) : 'sob consulta'}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mudo" style={{ fontSize: 13, marginTop: 6 }}>Valores pelo preço de hoje no catálogo, só como referência.
+            {' '}Total: <strong>{moeda(o.itens.reduce((s, i) => s + Number(i.precoReferencia || 0) * i.quantidade, 0))}</strong></p>
+        </div>
+      )}
       {o.fotos?.length > 0 && (
         <div style={{ marginTop: 18 }}>
           <p className="forte" style={{ marginBottom: 8 }}>Fotos de referência</p>

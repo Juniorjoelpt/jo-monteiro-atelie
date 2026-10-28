@@ -1,47 +1,69 @@
-import { SemImagem } from '../componentes/Marca.jsx';
-import { useEffect, useMemo, useState } from 'react';
-import { api } from '../api.js';
+import { useState } from 'react';
 import Icone from '../componentes/Icone.jsx';
+import { SemImagem } from '../componentes/Marca.jsx';
 import { Modal } from '../componentes/ui.jsx';
-import { useNavigate } from 'react-router-dom';
 import { FRENTES, moeda, whatsAtelie } from '../util.js';
-import Cabecalho from './Cabecalho.jsx';
+import { sacola } from './sacola.js';
 
-const FILTROS = [['TODAS', 'Todas'], ['PRONTA', 'Pronta-entrega'], ['PAPELARIA', 'Papelaria'], ['PORCELANA', 'Canecas'], ['PRESENTE', 'Presentes']];
+/**
+ * Categorias da loja (os círculos do topo e o menu). Como as peças não têm categoria própria,
+ * cada uma é reconhecida pelo nome (e pela frente, quando faz sentido).
+ */
+export const CATEGORIAS = [
+  { chave: 'cadernetas', rotulo: 'Cadernetas', icone: 'caderno', fundo: '#FDE2D3', cor: '#C9440F', palavras: ['caderneta', 'caderno', 'agenda', 'planner', 'bloco'] },
+  { chave: 'canecas', rotulo: 'Canecas', icone: 'caneca', fundo: '#EEE7F8', cor: '#6A47A8', palavras: ['caneca', 'xícara', 'xicara', 'porcelana'], frente: 'PORCELANA' },
+  { chave: 'garrafas', rotulo: 'Garrafas', icone: 'garrafa', fundo: '#DDEFF5', cor: '#1F6E8C', palavras: ['garrafa', 'squeeze', 'copo', 'tumbler'] },
+  { chave: 'biblias', rotulo: 'Bíblias', icone: 'livro', fundo: '#FCEFC6', cor: '#8A5D00', palavras: ['bíblia', 'biblia', 'terço', 'terco'] },
+  { chave: 'kits', rotulo: 'Kits e cestas', icone: 'presente', fundo: '#FBDDE6', cor: '#B03A62', palavras: ['kit', 'cesta', 'box', 'caixa'], frente: 'PRESENTE' },
+  { chave: 'lembrancinhas', rotulo: 'Lembrancinhas', icone: 'coracao', fundo: '#E2F2E6', cor: '#2F7A4A', palavras: ['lembranc', 'chaveiro', 'tag', 'topo', 'marcador'] },
+  { chave: 'pronta', rotulo: 'Pronta-entrega', icone: 'sacola', fundo: '#FFE9C7', cor: '#A65A00', pronta: true },
+];
 
-export function precoTexto(i) {
-  if (i.preco == null) return 'Sob consulta';
-  return i.prontaEntrega ? moeda(i.preco) : `a partir de ${moeda(i.preco)}`;
+export function daCategoria(cat, i) {
+  if (!cat) return true;
+  if (cat.pronta) return i.prontaEntrega && i.disponiveis > 0;
+  const nome = `${i.nome} ${i.texto || ''}`.toLowerCase();
+  return cat.palavras.some((p) => nome.includes(p)) || (cat.frente && i.frente === cat.frente);
 }
+
+export const precoTexto = (i) => (i.preco == null ? 'Sob consulta' : moeda(i.preco));
 
 export function mensagemPeca(i) {
   return i.prontaEntrega && i.disponiveis > 0
-    ? `Olá, Jô! Vi no catálogo a peça "${i.nome}" e quero comprar. Ainda tem disponível?`
-    : `Olá, Jô! Vi no catálogo a peça "${i.nome}" e quero personalizar. Pode me passar os detalhes?`;
+    ? `Olá, Jô! Vi no site a peça "${i.nome}" e quero comprar. Ainda tem disponível?`
+    : `Olá, Jô! Vi no site a peça "${i.nome}" e quero personalizar. Pode me passar os detalhes?`;
 }
 
-/** Cartão da peça (catálogo e página inicial). */
-export function CartaoPeca({ i, aoAbrir }) {
+/** Cartão da peça nas vitrines: foto, nome, preço e o botão da sacola. */
+export function CartaoPeca({ i, aoAbrir, naSacola, selo, aoAdicionar }) {
+  const pronta = i.prontaEntrega && i.disponiveis > 0;
   return (
-    <button type="button" className="peca-card" onClick={aoAbrir} aria-label={`${i.nome}, ${precoTexto(i)}. Ver detalhes`}>
-      <span className="peca-foto">
+    <article className="produto">
+      <button type="button" className="produto-foto" onClick={aoAbrir} aria-label={`Ver detalhes: ${i.nome}`}>
         {i.fotos[0] ? <img src={i.fotos[0]} alt="" loading="lazy" /> : <SemImagem />}
-        {i.prontaEntrega && i.disponiveis > 0 && <span className="selo selo-oliva peca-selo">Pronta-entrega</span>}
-      </span>
-      <span className="peca-info">
-        <span className="peca-nome">{i.nome}</span>
-        <span className="peca-preco">{precoTexto(i)}</span>
-      </span>
-    </button>
+        {selo ? <span className="produto-selo">{selo}</span>
+          : pronta ? <span className="produto-selo verde">{i.disponiveis} {i.disponiveis === 1 ? 'pronta' : 'prontas'}</span> : null}
+      </button>
+      <button type="button" className="produto-nome" onClick={aoAbrir}>{i.nome}</button>
+      <div className="produto-rodape">
+        <span className="produto-preco">
+          {i.preco != null && !pronta && <small>a partir de</small>}
+          {precoTexto(i)}
+        </span>
+        <button type="button" className={`produto-add ${naSacola ? 'na-sacola' : ''}`}
+          aria-label={naSacola ? `${i.nome} já está na sacola. Colocar mais uma` : `Colocar ${i.nome} na sacola`}
+          onClick={() => { sacola.adicionar(i.id); aoAdicionar?.(i); }}>
+          <Icone nome={naSacola ? 'check' : 'sacola'} tamanho={18} largura={naSacola ? 3 : 2} />
+        </button>
+      </div>
+    </article>
   );
 }
 
-/** Detalhe da peça com galeria, pedido de orçamento (personalizada) e WhatsApp (pronta-entrega). */
-export function DetalhePeca({ i, whatsapp, aoFechar, aoOrcar }) {
+/** Detalhe da peça com galeria: colocar na sacola, pedir orçamento só dela ou falar no WhatsApp. */
+export function DetalhePeca({ i, whatsapp, aoFechar, aoOrcar, aoAdicionar }) {
   const [foto, setFoto] = useState(0);
-  const ir = useNavigate();
   const disponivel = i.prontaEntrega && i.disponiveis > 0;
-  const orcar = aoOrcar || (() => ir(`/?peca=${i.id}`));
   return (
     <Modal titulo={i.nome} aoFechar={aoFechar} largo>
       <div className="peca-detalhe">
@@ -59,7 +81,10 @@ export function DetalhePeca({ i, whatsapp, aoFechar, aoOrcar }) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
           <span className="selo selo-terra" style={{ alignSelf: 'flex-start' }}>{FRENTES[i.frente]}</span>
-          <p style={{ fontSize: 28, fontWeight: 900 }}>{precoTexto(i)}</p>
+          <p style={{ fontSize: 28, fontWeight: 900 }}>
+            {i.preco != null && !disponivel && <small style={{ fontSize: 15, fontWeight: 700, color: 'var(--marrom-3)', marginRight: 6 }}>a partir de</small>}
+            {precoTexto(i)}
+          </p>
           {i.texto && <p style={{ whiteSpace: 'pre-line', fontWeight: 600, color: 'var(--marrom-2)' }}>{i.texto}</p>}
           <ul className="lista-check">
             {disponivel
@@ -70,74 +95,18 @@ export function DetalhePeca({ i, whatsapp, aoFechar, aoOrcar }) {
             <li><Icone nome="check" tamanho={16} largura={3} />Feita à mão, com carinho</li>
           </ul>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-            {disponivel ? (
-              <a className="btn btn-terra" style={{ minHeight: 52 }} target="_blank" rel="noopener noreferrer" href={whatsAtelie(whatsapp, mensagemPeca(i))}>
-                <Icone nome="whats" tamanho={18} />Quero comprar
-              </a>
-            ) : (
-              <button type="button" className="btn btn-terra" style={{ minHeight: 52 }} onClick={orcar}>
-                <Icone nome="orcamento" tamanho={18} />Pedir orçamento desta peça
-              </button>
-            )}
-            {!disponivel && (
-              <a className="btn btn-claro" style={{ minHeight: 52 }} target="_blank" rel="noopener noreferrer" href={whatsAtelie(whatsapp, mensagemPeca(i))}>
-                <Icone nome="whats" tamanho={18} />Tirar dúvida
-              </a>
-            )}
+            <button type="button" className="btn btn-terra" style={{ minHeight: 52 }} onClick={() => { sacola.adicionar(i.id); aoAdicionar?.(i); aoFechar(); }}>
+              <Icone nome="sacola" tamanho={18} />Colocar na sacola
+            </button>
+            <button type="button" className="btn btn-claro" style={{ minHeight: 52 }} onClick={aoOrcar}>
+              <Icone nome="orcamento" tamanho={18} />Pedir orçamento desta peça
+            </button>
+            <a className="btn btn-fantasma" style={{ minHeight: 52 }} target="_blank" rel="noopener noreferrer" href={whatsAtelie(whatsapp, mensagemPeca(i))}>
+              <Icone nome="whats" tamanho={18} />{disponivel ? 'Quero comprar' : 'Tirar dúvida'}
+            </a>
           </div>
         </div>
       </div>
     </Modal>
-  );
-}
-
-/** Página com todas as peças que o ateliê produz. */
-export default function Catalogo() {
-  const [dados, setDados] = useState(null);
-  const [erro, setErro] = useState(null);
-  const [filtro, setFiltro] = useState('TODAS');
-  const [aberta, setAberta] = useState(null);
-
-  useEffect(() => {
-    document.title = 'Catálogo · Ateliê Jô Monteiro';
-    api.get('/api/publico/site').then(setDados).catch((e) => setErro(e.message));
-  }, []);
-
-  const itens = dados?.catalogo || [];
-  const filtros = FILTROS.filter(([k]) => k === 'TODAS' || (k === 'PRONTA' ? itens.some((i) => i.prontaEntrega && i.disponiveis > 0) : itens.some((i) => i.frente === k)));
-  const lista = useMemo(() => itens.filter((i) => filtro === 'TODAS' || (filtro === 'PRONTA' ? i.prontaEntrega && i.disponiveis > 0 : i.frente === filtro)), [itens, filtro]);
-  const whatsapp = dados?.atelie?.whatsapp;
-
-  return (
-    <div className="site">
-      <Cabecalho />
-      <main className="envolve" style={{ paddingTop: 28, paddingBottom: 56, display: 'flex', flexDirection: 'column', gap: 22 }}>
-        <div>
-          <p className="sobretitulo">catálogo</p>
-          <h1 className="titulo-secao">Peças feitas no ateliê</h1>
-          <p style={{ marginTop: 8, maxWidth: 680, fontWeight: 600, color: 'var(--marrom-2)' }}>
-            Toque em uma peça para ver as fotos e pedir o seu orçamento. Tudo pode levar o nome, a frase e o tema que você quiser.
-          </p>
-        </div>
-        {filtros.length > 2 && (
-          <div className="chips" role="group" aria-label="Filtrar peças" style={{ alignSelf: 'flex-start' }}>
-            {filtros.map(([k, r]) => <button key={k} type="button" className="chip" aria-pressed={filtro === k} onClick={() => setFiltro(k)}>{r}</button>)}
-          </div>
-        )}
-        {erro && <div className="aviso aviso-erro" role="alert">Não foi possível carregar o catálogo agora.</div>}
-        {!erro && !dados && <p className="carregando">Carregando…</p>}
-        {dados && lista.length === 0 && <div className="aviso aviso-info">Em breve as peças aparecem aqui. Enquanto isso, chame a Jô no WhatsApp.</div>}
-        <div className="pecas-grade">
-          {lista.map((i) => <CartaoPeca key={i.id} i={i} aoAbrir={() => setAberta(i)} />)}
-        </div>
-        {dados && (
-          <div className="bloco" style={{ background: 'var(--terra-claro)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 18, padding: '24px 30px' }}>
-            <p style={{ flex: '1 1 300px', fontWeight: 800, fontSize: 18 }}>Não achou o que procurava? A Jô cria uma peça exclusiva para você.</p>
-            <a className="btn btn-terra" href="/#orcamento">Pedir orçamento</a>
-          </div>
-        )}
-      </main>
-      {aberta && <DetalhePeca i={aberta} whatsapp={whatsapp} aoFechar={() => setAberta(null)} />}
-    </div>
   );
 }

@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { sessao } from './api.js';
-import Site from './site/Site.jsx';
+import Loja from './site/Loja.jsx';
 import Layout from './admin/Layout.jsx';
 import Entrar from './admin/Entrar.jsx';
 import Painel from './admin/Painel.jsx';
@@ -19,7 +19,6 @@ import Lembretes from './admin/Lembretes.jsx';
 import Compras from './admin/Compras.jsx';
 import ContasFixas from './admin/ContasFixas.jsx';
 import Depoimentos from './admin/Depoimentos.jsx';
-import Catalogo from './site/Catalogo.jsx';
 import AprovarArte from './site/AprovarArte.jsx';
 import { TrocarSenha } from './admin/Configuracoes.jsx';
 import { Topo } from './admin/Layout.jsx';
@@ -36,8 +35,8 @@ function SoAdmin({ children }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Site />} />
-      <Route path="/catalogo" element={<Catalogo />} />
+      <Route path="/" element={<Loja />} />
+      <Route path="/catalogo" element={<Loja modo="catalogo" />} />
       <Route path="/arte/:codigo" element={<AprovarArte />} />
       <Route path="/admin/entrar" element={<Entrar />} />
       <Route path="/admin" element={<Protegido><Layout /></Protegido>}>

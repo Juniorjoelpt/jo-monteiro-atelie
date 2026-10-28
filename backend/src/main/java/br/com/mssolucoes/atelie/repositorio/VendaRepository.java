@@ -18,4 +18,12 @@ public interface VendaRepository extends JpaRepository<Venda, Long> {
 
     @Query("select count(i) > 0 from VendaItem i where i.produto.id = :produtoId")
     boolean produtoJaVendido(@Param("produtoId") Long produtoId);
+
+    /** [produtoId, peças] vendidas na pronta-entrega desde a data (vendas não canceladas). */
+    @Query("""
+            select i.produto.id, sum(i.quantidade) from VendaItem i
+            where i.produto is not null and i.venda.status = br.com.mssolucoes.atelie.dominio.Enums.StatusVenda.CONCLUIDA
+              and i.venda.data >= :desde
+            group by i.produto.id""")
+    List<Object[]> pecasPorProduto(@Param("desde") LocalDate desde);
 }

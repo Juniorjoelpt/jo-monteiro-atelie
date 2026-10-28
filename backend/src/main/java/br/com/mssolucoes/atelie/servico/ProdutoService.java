@@ -31,10 +31,16 @@ public class ProdutoService {
     private final ConsumoService consumoService;
     private final PrecificacaoService precificacao;
     private final ArmazenamentoService armazenamento;
+    private final br.com.mssolucoes.atelie.repositorio.OrcamentoRepository orcamentos;
+    private final br.com.mssolucoes.atelie.repositorio.OrcamentoItemRepository itensOrcamento;
 
     public ProdutoService(ProdutoRepository repo, MaterialRepository materiais, EncomendaRepository encomendas,
                           VendaRepository vendas, ConsumoMaterialRepository consumos, ConsumoService consumoService,
-                          PrecificacaoService precificacao, ArmazenamentoService armazenamento) {
+                          PrecificacaoService precificacao, ArmazenamentoService armazenamento,
+                          br.com.mssolucoes.atelie.repositorio.OrcamentoRepository orcamentos,
+                          br.com.mssolucoes.atelie.repositorio.OrcamentoItemRepository itensOrcamento) {
+        this.orcamentos = orcamentos;
+        this.itensOrcamento = itensOrcamento;
         this.armazenamento = armazenamento;
         this.repo = repo;
         this.materiais = materiais;
@@ -73,8 +79,9 @@ public class ProdutoService {
     @Transactional
     public void excluir(Long id) {
         Produto p = buscar(id);
-        if (encomendas.existsByProdutoId(id) || vendas.produtoJaVendido(id) || consumos.existsByProdutoId(id)) {
-            throw new RegraNegocioException("Esta peça já tem encomendas, vendas ou produção registradas. "
+        if (encomendas.existsByProdutoId(id) || vendas.produtoJaVendido(id) || consumos.existsByProdutoId(id)
+                || orcamentos.existsByProdutoId(id) || itensOrcamento.existsByProdutoId(id)) {
+            throw new RegraNegocioException("Esta peça já tem orçamentos, encomendas, vendas ou produção registrados. "
                     + "Desmarque \"Ativa\" para tirá-la das listas sem perder o histórico.");
         }
         repo.delete(p);

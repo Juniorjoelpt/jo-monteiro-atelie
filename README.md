@@ -4,7 +4,8 @@ Site do ateliê de papelaria criativa e presentes personalizados (cadernetas, ca
 e sistema de gestão, num único aplicativo. Feito a partir da base do sistema do Lenne Carvalho Ateliê.
 Desenvolvido pela MS Soluções Inteligentes.
 
-- **Site público** (`/`): o que o ateliê faz, como funciona, catálogo, portfólio, depoimentos e **orçamento online** com fotos de referência.
+- **Loja** (`/` e `/catalogo`): layout de loja com menu de categorias, busca, banner, vitrines (pronta-entrega, destaques, mais pedidos, para presentear), inspiração, como funciona, depoimentos e a **sacola de orçamento** ao lado.
+  A cliente junta as peças na sacola e manda tudo num **pedido de orçamento**, com personalização e até 3 fotos de referência.
 - **Aprovação de arte** (`/arte/<código>`): a cliente vê o mockup da encomenda e aprova ou pede ajuste, sem senha.
 - **Sistema** (`/admin`): painel, orçamentos, encomendas com artes, produtos (fichas técnicas e catálogo), vendas, agenda, clientes, financeiro, relatórios, materiais, portfólio e configurações.
 
@@ -23,6 +24,18 @@ Desenvolvido pela MS Soluções Inteligentes.
 4. **Aprovação da arte** (veja abaixo). Enquanto a arte não é aprovada, a encomenda mostra o aviso "espere a aprovação antes de produzir".
 5. **Encomenda até a entrega.** Os status são: Em produção → Pronta → Entregue. O saldo em aberto aparece em "A receber".
 6. **Materiais.** Em "Comprei", o estoque soma e a compra pode ir para as despesas. Em "Usei", o estoque desconta. Abaixo do mínimo, aparece um aviso no painel.
+
+### Loja e sacola de orçamento
+
+- **Categorias** (Cadernetas, Canecas, Garrafas, Bíblias, Kits e cestas, Lembrancinhas, Pronta-entrega): as peças entram na categoria
+  pelo nome (ex.: "Caneca…", "Kit…") e pela frente; "Pronta-entrega" mostra as peças com estoque. As palavras ficam em `src/site/Catalogo.jsx`.
+- **Mais pedidos:** as peças do catálogo com mais unidades em encomendas e vendas nos últimos 6 meses (o site recebe só a ordem, sem números).
+- **Sacola:** fica no navegador da cliente (não precisa de cadastro). No computador aparece sempre à direita; no tablet e no celular,
+  abre como gaveta pelo botão "Sacola". A estimativa usa o preço do catálogo; o valor final vem no orçamento.
+- **Pedido da sacola:** com uma peça só, o orçamento fica ligado a ela; com várias, o orçamento lista as peças e quantidades
+  (com o preço de referência) e, ao aprovar, essa lista vai para as observações da encomenda.
+- Sem fotos cadastradas, as peças mostram a Jô no círculo no lugar da foto. Sem fotos no portfólio, a "Inspiração" mostra ideias
+  de kits que abrem o pedido de orçamento já com o tipo escolhido.
 
 ### Aprovação de arte
 
@@ -223,6 +236,7 @@ Os testes cobrem:
 - acesso de ajudante sem valores e com rotas bloqueadas
 - depoimentos com foto no site e lembrete de pedir depoimento
 - orçamento do site com peça do catálogo, personalização e fotos (recusa arquivo falso e mais de 3 fotos)
+- sacola com várias peças (soma repetidas, ignora peça fora do catálogo), uma peça só e "mais pedidos" do site
 - aprovação do orçamento levando peça, personalização e fotos para a encomenda
 - aprovação de arte pelo link: ajuste, nova versão, aprovação, histórico, lembretes e link que some ao cancelar
 - resposta da arte registrada pelo sistema e exclusão da última versão

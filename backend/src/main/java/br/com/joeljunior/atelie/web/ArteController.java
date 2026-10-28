@@ -83,6 +83,19 @@ public class ArteController {
                 .body(artes.abrir(v));
     }
 
+    /** Mesmo conteúdo, pelo nome novo (página "Acompanhar meu pedido"). */
+    @GetMapping("/publico/pedidos/{codigo}")
+    public ArtePublica pedido(@PathVariable String codigo, HttpServletRequest req) {
+        return publica(codigo, req);
+    }
+
+    @PostMapping("/publico/artes/{codigo}/visto")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void visto(@PathVariable String codigo, @RequestBody(required = false) VistoReq r, HttpServletRequest req) {
+        limitador.verificar(req, "arte-visto", 120, 60 * 60);
+        artes.visto(codigo, r == null ? null : r.versaoId());
+    }
+
     @PostMapping("/publico/artes/{codigo}/resposta")
     public ArtePublica responder(@PathVariable String codigo, @Valid @RequestBody RespostaArteReq r,
                                  HttpServletRequest req) {

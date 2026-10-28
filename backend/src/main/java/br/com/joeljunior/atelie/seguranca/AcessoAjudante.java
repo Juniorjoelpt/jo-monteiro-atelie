@@ -22,6 +22,7 @@ public final class AcessoAjudante {
             new Rota(HttpMethod.GET, "/api/encomendas"),
             new Rota(HttpMethod.GET, "/api/encomendas/*"),
             new Rota(HttpMethod.PATCH, "/api/encomendas/*/status"),
+            new Rota(HttpMethod.GET, "/api/encomendas/*/historico"),
             new Rota(HttpMethod.GET, "/api/encomendas/*/consumos"),
             new Rota(HttpMethod.POST, "/api/encomendas/*/consumos"),
             new Rota(HttpMethod.POST, "/api/encomendas/*/baixar-ficha"),

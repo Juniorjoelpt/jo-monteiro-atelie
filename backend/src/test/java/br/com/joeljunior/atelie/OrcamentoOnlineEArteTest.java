@@ -183,7 +183,8 @@ class OrcamentoOnlineEArteTest {
                  "personalizacao":"Foto da família e a frase 'Mãe, você é o nosso lar'","precisaArte":true}""".formatted(cliente),
                 status().isCreated()));
         assertThat(ler("/api/encomendas/" + enc).get("statusArte").asText()).isEqualTo("A_CRIAR");
-        assertThat(ler("/api/encomendas/" + enc + "/artes").get("link").isNull()).isTrue();
+        // O link do pedido já existe desde a criação (a cliente acompanha antes mesmo da arte)
+        assertThat(ler("/api/encomendas/" + enc + "/artes").get("link").asText()).contains("/pedido/");
 
         // Versão 1
         JsonNode artes = enviarArte(enc, "Primeira ideia, com a foto no centro");
@@ -196,7 +197,7 @@ class OrcamentoOnlineEArteTest {
         // Lembrete com a mensagem e o link
         JsonNode lembrete = lembrete("ARTE:" + v1);
         assertThat(lembrete).isNotNull();
-        assertThat(lembrete.get("mensagem").asText()).contains("Carla").contains("/arte/" + codigo);
+        assertThat(lembrete.get("mensagem").asText()).contains("Carla").contains("/pedido/" + codigo);
 
         // Página da cliente (sem login)
         JsonNode pub = publico("/api/publico/artes/" + codigo, status().isOk());
@@ -204,7 +205,9 @@ class OrcamentoOnlineEArteTest {
         assertThat(pub.get("descricao").asText()).isEqualTo("Caneca Dia das Mães");
         assertThat(pub.get("versoes")).hasSize(1);
         assertThat(pub.get("versoes").get(0).get("atual").asBoolean()).isTrue();
-        assertThat(pub.toString()).doesNotContain("valorTotal").doesNotContain("98981234567");
+        // Mostra o andamento e o saldo, mas nunca o telefone da cliente
+        assertThat(pub.get("andamento").get("saldo").decimalValue()).isEqualByComparingTo("60");
+        assertThat(pub.toString()).doesNotContain("98981234567");
         mvc.perform(get(pub.get("versoes").get(0).get("url").asText())).andExpect(status().isOk());
         mvc.perform(get("/api/publico/artes/" + codigo + "/versoes/999/arquivo")).andExpect(status().isNotFound());
         mvc.perform(get("/api/publico/artes/00000000-0000-0000-0000-000000000000")).andExpect(status().isNotFound());

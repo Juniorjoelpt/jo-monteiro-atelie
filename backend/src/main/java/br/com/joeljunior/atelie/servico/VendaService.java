@@ -30,8 +30,11 @@ public class VendaService {
     private final ClienteService clientes;
     private final PrecificacaoService precificacao;
 
+    private final HistoricoService historico;
+
     public VendaService(VendaRepository repo, ProdutoRepository produtos, LancamentoRepository lancamentos,
-                        ClienteService clientes, PrecificacaoService precificacao) {
+                        ClienteService clientes, PrecificacaoService precificacao, HistoricoService historico) {
+        this.historico = historico;
         this.repo = repo;
         this.produtos = produtos;
         this.lancamentos = lancamentos;
@@ -121,6 +124,8 @@ public class VendaService {
             l.setVenda(v);
             lancamentos.save(l);
         }
+        historico.registrar(AreaHistorico.VENDA, null, "VENDEU", "Registrou a venda nº " + v.getId() + ": "
+                + itens(v) + " — total " + HistoricoService.pdfMoeda(v.getTotal()) + ".", true);
         return paraResp(v);
     }
 
@@ -138,6 +143,8 @@ public class VendaService {
         }
         lancamentos.deleteByVendaId(id);
         v.setStatus(StatusVenda.CANCELADA);
+        historico.registrar(AreaHistorico.VENDA, null, "CANCELOU", "Cancelou a venda nº " + v.getId() + " ("
+                + itens(v) + "); as peças voltaram para o estoque.", true);
         return paraResp(repo.save(v));
     }
 
@@ -193,5 +200,9 @@ public class VendaService {
                 v.getItens().stream().map(i -> new VendaItemResp(
                         i.getProduto() == null ? null : i.getProduto().getId(), i.getDescricao(), i.getQuantidade(),
                         i.getPrecoUnitario(), i.getCustoUnitario())).toList());
+    }
+
+    private static String itens(Venda v) {
+        return String.join(", ", v.getItens().stream().map(i -> i.getQuantidade() + "× " + i.getDescricao()).toList());
     }
 }

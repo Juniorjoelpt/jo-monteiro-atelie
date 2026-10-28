@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api.js';
 import Icone from '../componentes/Icone.jsx';
 import Marca, { Mascote } from '../componentes/Marca.jsx';
-import { dataHora, whatsAtelie } from '../util.js';
+import { dataExtensa, dataHora, diasAte, etapasPedido, moeda, whatsAtelie } from '../util.js';
 
 /**
- * Página que a cliente abre pelo link (sem senha) para ver a arte da encomenda e responder:
- * aprovar ou pedir ajuste. Versões antigas e respostas ficam no histórico, embaixo.
+ * Página do pedido, que a cliente abre pelo link (sem senha): acompanha o andamento, vê a data combinada
+ * e quanto falta pagar, e aprova a arte (ou pede ajuste). Os links antigos /arte/<código> abrem a mesma página.
  */
 export default function AprovarArte() {
   const { codigo } = useParams();
@@ -18,17 +18,27 @@ export default function AprovarArte() {
   const [enviando, setEnviando] = useState(false);
   const [erroEnvio, setErroEnvio] = useState(null);
   const [resposta, setResposta] = useState(null); // 'aprovada' | 'ajuste' (acabou de responder)
+  const avisado = useRef(null);
 
   useEffect(() => {
-    document.title = 'Aprovação da arte · Ateliê Jô Monteiro';
+    document.title = 'Meu pedido · Ateliê Jô Monteiro';
     api.get(`/api/publico/artes/${codigo}`).then(setArte).catch((e) => setErro(e.status === 404
-      ? 'Não encontramos esta arte. Confira se o link está completo ou fale com a Jô pelo WhatsApp.'
+      ? 'Não encontramos este pedido. Confira se o link está completo ou fale com a Jô pelo WhatsApp.'
       : e.message));
   }, [codigo]);
 
   const atual = arte?.versoes?.find((v) => v.atual);
   const anteriores = arte?.versoes?.filter((v) => !v.atual) || [];
   const podeResponder = arte?.status === 'AGUARDANDO_CLIENTE' && atual && !atual.resposta;
+
+  // Avisa o ateliê que o pedido (e a versão atual da arte) foi aberto. Uma vez por versão.
+  useEffect(() => {
+    if (!arte) return;
+    const chave = atual?.id ?? 0;
+    if (avisado.current === chave) return;
+    avisado.current = chave;
+    api.post(`/api/publico/artes/${codigo}/visto`, { versaoId: atual?.id ?? null }).catch(() => {});
+  }, [arte, atual?.id, codigo]);
 
   async function responder(aprovar) {
     setEnviando(true);
@@ -41,7 +51,7 @@ export default function AprovarArte() {
       setResposta(aprovar ? 'aprovada' : 'ajuste');
       setModo(null);
       setComentario('');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.getElementById('arte')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (e) {
       setErroEnvio(e.message);
     } finally {
@@ -49,7 +59,8 @@ export default function AprovarArte() {
     }
   }
 
-  const textoWhats = arte ? `Olá, Jô! Sobre a arte da minha encomenda (${arte.descricao}):` : '';
+  const textoWhats = arte ? `Olá, Jô! Sobre a minha encomenda (${arte.descricao}):` : '';
+  const and = arte?.andamento;
 
   return (
     <div className="site arte-pagina">
@@ -61,20 +72,21 @@ export default function AprovarArte() {
 
       <main className="envolve" style={{ maxWidth: 880, paddingTop: 24, paddingBottom: 48, display: 'flex', flexDirection: 'column', gap: 22 }}>
         {erro && <div className="aviso aviso-erro" role="alert">{erro}</div>}
-        {!erro && !arte && <p className="carregando">Carregando a sua arte…</p>}
+        {!erro && !arte && <p className="carregando">Carregando o seu pedido…</p>}
 
         {arte && (
           <>
             <div>
-              <p className="sobretitulo">aprovação da arte</p>
+              <p className="sobretitulo">meu pedido</p>
               <h1 className="titulo-secao">Oi, {arte.cliente}!</h1>
               <p style={{ marginTop: 6, fontWeight: 600, color: 'var(--marrom-2)', fontSize: 18 }}>
-                {arte.status === 'A_CRIAR' || !atual
-                  ? 'A arte da sua encomenda ainda está sendo criada. Assim que ficar pronta, ela aparece aqui, neste mesmo link.'
-                  : podeResponder
-                    ? 'A arte da sua encomenda está pronta. Confira com calma e me diga se posso produzir.'
-                    : 'Aqui fica a arte da sua encomenda e o histórico das versões.'}
+                {podeResponder
+                  ? 'A arte da sua encomenda está pronta. Confira com calma e me diga se posso produzir.'
+                  : 'Aqui você acompanha cada etapa da sua encomenda. É só voltar neste link quando quiser.'}
               </p>
+              {podeResponder && (
+                <a href="#arte" className="btn btn-terra" style={{ marginTop: 14 }}><Icone nome="pincel" tamanho={18} />Ver a arte e responder</a>
+              )}
             </div>
 
             {resposta === 'aprovada' && (
@@ -90,30 +102,33 @@ export default function AprovarArte() {
               </div>
             )}
 
-            <section className="cartao" aria-labelledby="pedido-titulo">
-              <h2 id="pedido-titulo" style={{ fontSize: 20 }}>{arte.descricao}</h2>
-              {arte.personalizacao && (
-                <p style={{ marginTop: 8, fontWeight: 600, color: 'var(--marrom-2)', whiteSpace: 'pre-line' }}>
-                  <strong style={{ color: 'var(--marrom)' }}>O que combinamos: </strong>{arte.personalizacao}
-                </p>
-              )}
-            </section>
+            {and && <Andamento arte={arte} and={and} />}
 
-            {atual && (
-              <section className="cartao arte-atual" aria-labelledby="versao-titulo">
+            {(atual || arte.status === 'A_CRIAR' || arte.status === 'AJUSTE_PEDIDO') && arte.status !== 'SEM_ARTE' && (
+              <section id="arte" className="cartao arte-atual" aria-labelledby="versao-titulo" style={{ scrollMarginTop: 16 }}>
                 <div className="cartao-titulo">
-                  <h2 id="versao-titulo">Versão {atual.numero}</h2>
-                  <SeloResposta v={atual} status={arte.status} />
+                  <h2 id="versao-titulo">{atual ? `Arte · versão ${atual.numero}` : 'Arte'}</h2>
+                  {atual && <SeloResposta v={atual} status={arte.status} />}
                 </div>
-                <a href={atual.url} target="_blank" rel="noopener noreferrer" className="arte-imagem" aria-label="Abrir a arte em tamanho grande">
-                  <img src={atual.url} alt={`Arte da encomenda, versão ${atual.numero}`} />
-                  <span className="selo selo-areia"><Icone nome="olho" tamanho={16} />Ver em tamanho grande</span>
-                </a>
-                {atual.observacao && (
-                  <p className="arte-recado"><span className="cursiva" style={{ fontSize: 28, lineHeight: 1 }}>Jô:</span> {atual.observacao}</p>
-                )}
-                {atual.comentarioCliente && (
-                  <p className="arte-recado cliente"><strong>Você: </strong>{atual.comentarioCliente}</p>
+                {!atual && <p className="mudo forte">A arte da sua peça ainda está sendo criada. Assim que ficar pronta, ela aparece aqui, neste mesmo link.</p>}
+                {atual && (
+                  <>
+                    <a href={atual.url} target="_blank" rel="noopener noreferrer" className="arte-imagem" aria-label="Abrir a arte em tamanho grande">
+                      <img src={atual.url} alt={`Arte da encomenda, versão ${atual.numero}`} />
+                      <span className="selo selo-areia"><Icone nome="olho" tamanho={16} />Ver em tamanho grande</span>
+                    </a>
+                    {arte.personalizacao && (
+                      <p style={{ fontWeight: 600, color: 'var(--marrom-2)', whiteSpace: 'pre-line' }}>
+                        <strong style={{ color: 'var(--marrom)' }}>O que combinamos: </strong>{arte.personalizacao}
+                      </p>
+                    )}
+                    {atual.observacao && (
+                      <p className="arte-recado"><span className="cursiva" style={{ fontSize: 28, lineHeight: 1 }}>Jô:</span> {atual.observacao}</p>
+                    )}
+                    {atual.comentarioCliente && (
+                      <p className="arte-recado cliente"><strong>Você: </strong>{atual.comentarioCliente}</p>
+                    )}
+                  </>
                 )}
 
                 {podeResponder && !modo && (
@@ -173,7 +188,7 @@ export default function AprovarArte() {
 
             {anteriores.length > 0 && (
               <section className="cartao" aria-labelledby="hist-titulo">
-                <h2 id="hist-titulo" style={{ fontSize: 20, marginBottom: 12 }}>Versões anteriores</h2>
+                <h2 id="hist-titulo" style={{ fontSize: 20, marginBottom: 12 }}>Versões anteriores da arte</h2>
                 <ul className="lista-linhas">
                   {anteriores.map((v) => (
                     <li key={v.id} style={{ alignItems: 'flex-start' }}>
@@ -191,6 +206,8 @@ export default function AprovarArte() {
               </section>
             )}
 
+            {and && <Pagamento and={and} />}
+
             <div className="bloco" style={{ background: 'var(--terra-claro)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 18, padding: '22px 28px' }}>
               <Mascote pose="notebook" style={{ width: 84 }} />
               <p style={{ flex: '1 1 260px', fontWeight: 800 }}>Ficou com alguma dúvida? Fale direto comigo.</p>
@@ -202,6 +219,73 @@ export default function AprovarArte() {
         )}
       </main>
     </div>
+  );
+}
+
+/** Linha do tempo: confirmado → arte → produção → pronta → entregue, com a data combinada. */
+function Andamento({ arte, and }) {
+  const etapas = etapasPedido({ status: and.status, statusArte: arte.status, valorSinal: and.valorSinal });
+  const dias = diasAte(and.prazoEntrega);
+  return (
+    <section className="cartao pedido-andamento" aria-labelledby="and-titulo">
+      <div className="cartao-titulo" style={{ alignItems: 'flex-start' }}>
+        <div style={{ minWidth: 0 }}>
+          <h2 id="and-titulo">{arte.descricao}</h2>
+          {and.quantidade > 1 && <p className="mudo forte" style={{ fontSize: 14 }}>{and.quantidade} unidades</p>}
+        </div>
+        {and.status === 'ENTREGUE' && and.entregueEm ? (
+          <div className="pedido-data"><span>Entregue em</span><strong>{dataExtensa(and.entregueEm)}</strong></div>
+        ) : and.prazoEntrega ? (
+          <div className="pedido-data">
+            <span>Entrega combinada</span>
+            <strong>{dataExtensa(and.prazoEntrega)}</strong>
+            {dias != null && dias >= 0 && dias <= 30 && <small>{dias === 0 ? 'é hoje!' : dias === 1 ? 'é amanhã' : `faltam ${dias} dias`}</small>}
+          </div>
+        ) : null}
+      </div>
+      <ol className="etapas">
+        {etapas.map((e) => (
+          <li key={e.chave} className={e.feito ? 'feita' : e.atual ? 'atual' : ''} aria-current={e.atual ? 'step' : undefined}>
+            <span className="etapa-marca" aria-hidden="true">{e.feito ? <Icone nome="check" tamanho={16} largura={3} /> : null}</span>
+            <div>
+              <p className="etapa-rotulo">{e.rotulo}{e.atual && <span className="sr"> (etapa atual)</span>}</p>
+              {e.texto && (e.feito || e.atual) && <p className="etapa-texto">{e.texto}</p>}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/** Valores: total, quanto já foi pago e o saldo, com a chave Pix para pagar. */
+function Pagamento({ and }) {
+  const [copiado, setCopiado] = useState(false);
+  const saldo = Number(and.saldo);
+  if (Number(and.valorTotal) <= 0) return null;
+  async function copiar() {
+    try { await navigator.clipboard.writeText(and.chavePix); setCopiado(true); setTimeout(() => setCopiado(false), 2500); } catch { /* sem área de transferência */ }
+  }
+  return (
+    <section className="cartao" aria-labelledby="pag-titulo">
+      <h2 id="pag-titulo" style={{ fontSize: 20, marginBottom: 12 }}>Pagamento</h2>
+      <div className="pedido-valores">
+        <div><span>Total</span><strong>{moeda(and.valorTotal)}</strong></div>
+        <div><span>Já pago</span><strong>{moeda(and.valorPago)}</strong></div>
+        <div className={saldo > 0 ? 'falta' : 'ok'}><span>{saldo > 0 ? 'Falta pagar' : 'Situação'}</span><strong>{saldo > 0 ? moeda(saldo) : 'Tudo pago'}</strong></div>
+      </div>
+      {saldo > 0 && and.chavePix && (
+        <div className="pedido-pix">
+          <Icone nome="pix" tamanho={26} cor="var(--oliva)" />
+          <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+            <p className="forte" style={{ fontSize: 14 }}>Chave Pix{and.titularPix ? ` · ${and.titularPix}` : ''}</p>
+            <p className="pix-chave">{and.chavePix}</p>
+          </div>
+          <button type="button" className="btn btn-claro btn-p" onClick={copiar}><Icone nome={copiado ? 'check' : 'copiar'} tamanho={16} />{copiado ? 'Copiada!' : 'Copiar chave'}</button>
+        </div>
+      )}
+      {saldo > 0 && <p className="mudo forte" style={{ fontSize: 14, marginTop: 10 }}>Depois de pagar, mande o comprovante no WhatsApp para eu dar baixa.</p>}
+    </section>
   );
 }
 

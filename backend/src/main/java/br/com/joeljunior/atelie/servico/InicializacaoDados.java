@@ -21,17 +21,20 @@ public class InicializacaoDados implements ApplicationRunner {
 
     private final UsuarioRepository usuarios;
     private final ConfiguracaoRepository configuracoes;
+    private final br.com.joeljunior.atelie.repositorio.EncomendaRepository encomendas;
     private final PasswordEncoder encoder;
     private final String nome;
     private final String email;
     private final String senha;
 
-    public InicializacaoDados(UsuarioRepository usuarios, ConfiguracaoRepository configuracoes, PasswordEncoder encoder,
+    public InicializacaoDados(UsuarioRepository usuarios, ConfiguracaoRepository configuracoes,
+                              br.com.joeljunior.atelie.repositorio.EncomendaRepository encomendas, PasswordEncoder encoder,
                               @Value("${atelie.admin.nome}") String nome,
                               @Value("${atelie.admin.email}") String email,
                               @Value("${atelie.admin.senha}") String senha) {
         this.usuarios = usuarios;
         this.configuracoes = configuracoes;
+        this.encomendas = encomendas;
         this.encoder = encoder;
         this.nome = nome;
         this.email = email;
@@ -51,6 +54,13 @@ public class InicializacaoDados implements ApplicationRunner {
         }
         if (!configuracoes.existsById(Configuracao.ID_UNICO)) {
             configuracoes.save(ConfiguracaoService.padrao());
+        }
+        // Encomendas de antes do link do pedido: cada uma ganha o seu código
+        var semCodigo = encomendas.findByCodigoArteIsNull();
+        semCodigo.forEach(e -> e.setCodigoArte(java.util.UUID.randomUUID().toString()));
+        if (!semCodigo.isEmpty()) {
+            encomendas.saveAll(semCodigo);
+            log.info("Link do pedido criado para {} encomenda(s) antigas.", semCodigo.size());
         }
     }
 }

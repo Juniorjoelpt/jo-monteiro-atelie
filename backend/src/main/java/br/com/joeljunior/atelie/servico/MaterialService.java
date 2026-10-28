@@ -3,6 +3,7 @@ package br.com.joeljunior.atelie.servico;
 import br.com.joeljunior.atelie.dominio.Enums.CategoriaLancamento;
 import br.com.joeljunior.atelie.dominio.Enums.FormaPagamento;
 import br.com.joeljunior.atelie.dominio.Enums.TipoLancamento;
+import br.com.joeljunior.atelie.dominio.Enums.AreaHistorico;
 import br.com.joeljunior.atelie.dominio.Lancamento;
 import br.com.joeljunior.atelie.dominio.Material;
 import br.com.joeljunior.atelie.dto.Dtos.AjusteEstoqueReq;
@@ -28,12 +29,14 @@ public class MaterialService {
     private final br.com.joeljunior.atelie.repositorio.ConsumoMaterialRepository consumos;
     private final br.com.joeljunior.atelie.repositorio.CompraItemRepository itensCompra;
     private final CompraService compras;
+    private final HistoricoService historico;
 
     public MaterialService(MaterialRepository repo, LancamentoRepository lancamentos,
                            br.com.joeljunior.atelie.repositorio.ProdutoRepository produtos,
                            br.com.joeljunior.atelie.repositorio.ConsumoMaterialRepository consumos,
                            br.com.joeljunior.atelie.repositorio.CompraItemRepository itensCompra,
-                           CompraService compras) {
+                           CompraService compras, HistoricoService historico) {
+        this.historico = historico;
         this.repo = repo;
         this.lancamentos = lancamentos;
         this.produtos = produtos;
@@ -70,6 +73,12 @@ public class MaterialService {
     @Transactional
     public MaterialResp ajustar(Long id, AjusteEstoqueReq r) {
         Material m = buscar(id);
+        historico.registrar(AreaHistorico.ESTOQUE, null, r.tipo() == TipoLancamento.SAIDA ? "USOU" : "ENTRADA",
+                (r.tipo() == TipoLancamento.SAIDA ? "Registrou uso de " : "Registrou entrada de ")
+                        + r.quantidade().stripTrailingZeros().toPlainString() + " " + m.getUnidade() + " de " + m.getNome()
+                        + (r.valorCompra() != null && r.valorCompra().signum() > 0
+                        ? " (compra de " + HistoricoService.pdfMoeda(r.valorCompra()) + ")" : "") + ".",
+                r.valorCompra() != null && r.valorCompra().signum() > 0);
         if (r.tipo() == TipoLancamento.SAIDA) {
             if (r.quantidade().compareTo(m.getQuantidade()) > 0) {
                 throw new RegraNegocioException("Só há " + m.getQuantidade().stripTrailingZeros().toPlainString()

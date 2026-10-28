@@ -16,6 +16,7 @@ const MENU = [
   ['/admin/clientes', 'cliente', 'Clientes'],
   ['/admin/financeiro', 'financeiro', 'Financeiro'],
   ['/admin/relatorios', 'grafico', 'Relatórios'],
+  ['/admin/historico', 'historico', 'Histórico'],
   ['/admin/materiais', 'material', 'Materiais', false, true],
   ['/admin/portfolio', 'portfolio', 'Portfólio'],
   ['/admin/configuracoes', 'config', 'Configurações'],

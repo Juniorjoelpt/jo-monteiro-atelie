@@ -4,7 +4,8 @@ import { api, sessao } from '../api.js';
 import { FormCompromisso } from './Agenda.jsx';
 import Icone from '../componentes/Icone.jsx';
 import { Campo, Confirmar, Estado, Modal, ModalForm, Selo, lerForm, useCarregar, useToast, Vazio } from '../componentes/ui.jsx';
-import { FORMAS, FRENTES, STATUS_ARTE, STATUS_ENCOMENDA, data, hojeIso, linkWhats, moeda, moedaUnit, qtd, qtdUn, telefone } from '../util.js';
+import { FORMAS, FRENTES, STATUS_ARTE, STATUS_ENCOMENDA, data, dataHora, hojeIso, linkWhats, moeda, moedaUnit, primeiroNome, qtd, qtdUn, telefone } from '../util.js';
+import Quadro from './Quadro.jsx';
 import ArteEncomenda from './ArteEncomenda.jsx';
 import CamposFicha from '../componentes/CamposFicha.jsx';
 import { Topo } from './Layout.jsx';
@@ -20,6 +21,13 @@ const PROXIMO_AJUDANTE = { EM_PRODUCAO: 'PRONTA', PRONTA: 'ENTREGUE' };
 
 export default function Encomendas() {
   const [params, setParams] = useSearchParams();
+  const [visao, setVisao] = useState(() => {
+    try { return params.get('ver') || localStorage.getItem('atelie.encomendas.visao') || 'lista'; } catch { return 'lista'; }
+  });
+  function mudarVisao(v) {
+    setVisao(v);
+    try { localStorage.setItem('atelie.encomendas.visao', v); } catch { /* sem armazenamento */ }
+  }
   const [filtro, setFiltro] = useState('');
   const [filtroArte, setFiltroArte] = useState(params.get('arte') || '');
   const arteUrl = params.get('arte');
@@ -29,7 +37,7 @@ export default function Encomendas() {
   const toast = useToast();
   const ajudante = sessao.ajudante();
   const { dados, erro, carregando, recarregar } = useCarregar(
-    () => api.get(`/api/encomendas${filtro ? `?status=${filtro}` : ''}`), [filtro]);
+    () => api.get(`/api/encomendas${filtro && visao === 'lista' ? `?status=${filtro}` : ''}`), [filtro, visao]);
   const lista = dados?.filter((e) => !filtroArte || (ARTE_ATIVA.includes(e.status) && (filtroArte === 'PENDENTES'
     ? ['A_CRIAR', 'AJUSTE_PEDIDO'].includes(e.statusArte) : e.statusArte === filtroArte)));
 
@@ -38,6 +46,17 @@ export default function Encomendas() {
       <Topo titulo="Encomendas">
         {!ajudante && <button type="button" className="btn btn-terra" onClick={() => setForm({})}><Icone nome="mais" tamanho={18} largura={3} />Nova encomenda</button>}
       </Topo>
+      <div className="filtros">
+        <div className="chips" role="group" aria-label="Como ver as encomendas">
+          <button type="button" className="chip" aria-pressed={visao === 'quadro'} onClick={() => mudarVisao('quadro')}><Icone nome="encomenda" tamanho={16} />Quadro</button>
+          <button type="button" className="chip" aria-pressed={visao === 'lista'} onClick={() => mudarVisao('lista')}><Icone nome="menu" tamanho={16} />Lista</button>
+        </div>
+      </div>
+      {visao === 'quadro' ? (
+        <Estado carregando={carregando && !dados} erro={erro}>
+          {dados && <Quadro encomendas={dados} aoAbrir={setAberta} aoMudar={recarregar} />}
+        </Estado>
+      ) : <>
       <div className="filtros">
         <div className="chips" role="group" aria-label="Filtrar por status">
           {FILTROS.map(([v, r]) => <button key={v} type="button" className="chip" aria-pressed={filtro === v} onClick={() => setFiltro(v)}>{r}</button>)}
@@ -56,14 +75,15 @@ export default function Encomendas() {
                 <tbody>
                   {lista?.map((e) => (
                     <tr key={e.id} className="clicavel" tabIndex={0} onClick={() => setAberta(e)} onKeyDown={(k) => k.key === 'Enter' && setAberta(e)}>
-                      <td><strong>{e.descricao}</strong><br /><span className="mudo" style={{ fontSize: 14 }}>{FRENTES[e.frente]}{e.produtoNome ? ` · ${e.quantidade}× ${e.produtoNome}` : ''}</span></td>
+                      <td>{e.urgente && <span className="selo selo-perigo selo-p" style={{ marginRight: 6 }}><Icone nome="raio" tamanho={12} />Urgente</span>}<strong>{e.descricao}</strong><br /><span className="mudo" style={{ fontSize: 14 }}>{FRENTES[e.frente]}{e.produtoNome ? ` · ${e.quantidade}× ${e.produtoNome}` : ''}</span></td>
                       <td>{e.clienteNome}</td>
                       <td>{data(e.prazoEntrega)}</td>
                       {!ajudante && <>
                         <td className="num">{moeda(e.valorTotal)}</td>
                         <td className="num" style={{ fontWeight: 800, color: Number(e.saldo) > 0 ? 'var(--terra-texto)' : 'var(--oliva-texto)' }}>{Number(e.saldo) > 0 ? moeda(e.saldo) : 'Quitada'}</td>
                       </>}
-                      <td>{e.statusArte === 'SEM_ARTE' ? <span className="mudo">—</span> : <Selo mapa={STATUS_ARTE} valor={e.statusArte} />}</td>
+                      <td>{e.statusArte === 'SEM_ARTE' ? <span className="mudo">—</span> : <><Selo mapa={STATUS_ARTE} valor={e.statusArte} />
+                        {e.statusArte === 'AGUARDANDO_CLIENTE' && <span className="mudo forte" style={{ display: 'block', fontSize: 12.5, marginTop: 3 }}>{e.arteVistaEm ? 'vista pela cliente' : 'ainda não vista'}</span>}</>}</td>
                       <td><Selo mapa={STATUS_ENCOMENDA} valor={e.status} /></td>
                     </tr>
                   ))}
@@ -73,6 +93,7 @@ export default function Encomendas() {
           )}
         </Estado>
       </section>
+      </>}
 
       {aberta && <Detalhe id={aberta.id} aoFechar={() => { setAberta(null); if (params.get('abrir')) setParams({}); recarregar(); }}
         aoEditar={(e) => { setAberta(null); setForm(e); }} />}
@@ -94,7 +115,7 @@ function FormEncomenda({ encomenda: e, aoFechar, aoSalvar }) {
   }
   return (
     <ModalForm titulo={e.id ? 'Editar encomenda' : 'Nova encomenda'} aoFechar={aoFechar} aoSalvar={async (fd) => {
-      const d = { ...lerForm(fd, ['valorTotal', 'valorSinal', 'clienteId', 'produtoId', 'quantidade', 'horasTrabalhadas']), precisaArte: fd.has('precisaArte') };
+      const d = { ...lerForm(fd, ['valorTotal', 'valorSinal', 'clienteId', 'produtoId', 'quantidade', 'horasTrabalhadas']), precisaArte: fd.has('precisaArte'), urgente: fd.has('urgente') };
       if (e.id) await api.put(`/api/encomendas/${e.id}`, d);
       else await api.post('/api/encomendas', d);
       aoSalvar();
@@ -113,6 +134,8 @@ function FormEncomenda({ encomenda: e, aoFechar, aoSalvar }) {
         dica="Nome, frase, data, tema… o que vai na peça." />
       <label className="checkbox inteiro"><input type="checkbox" name="precisaArte" defaultChecked={e.id ? e.statusArte !== 'SEM_ARTE' : true} disabled={e.versoesArte > 0} />
         Peça personalizada: a cliente aprova a arte pelo link antes da produção</label>
+      <label className="checkbox inteiro"><input type="checkbox" name="urgente" defaultChecked={!!e.urgente} />
+        Urgente: aparece primeiro no quadro de produção</label>
       <Campo rotulo="Observações" nome="observacoes" linhas={3} defaultValue={e.observacoes} inteiro />
     </ModalForm>
   );
@@ -134,6 +157,14 @@ function Detalhe({ id, aoFechar, aoEditar }) {
     try { toast(`${await api.baixar(`/api/encomendas/${id}/contrato`)} baixado.`); }
     catch (err) { setFalha(err.message); }
     finally { setGerando(false); }
+  }
+
+  async function urgente(valor) {
+    try {
+      await api.patch(`/api/encomendas/${id}/urgente`, { urgente: valor });
+      toast(valor ? 'Marcada como urgente.' : 'Tirou a urgência.');
+      recarregar();
+    } catch (err) { setFalha(err.message); }
   }
 
   async function mudar(status) {
@@ -186,6 +217,7 @@ function Detalhe({ id, aoFechar, aoEditar }) {
         <button type="button" className="btn btn-claro" onClick={() => aoEditar(e)}><Icone nome="editar" tamanho={18} />Editar</button>
         <button type="button" className="btn btn-claro" onClick={contrato} disabled={gerando}><Icone nome="pdf" tamanho={18} />{gerando ? 'Gerando…' : 'Contrato'}</button>
       </>}
+      <a className="btn btn-claro" href={`/admin/encomendas/${e.id}/ficha`} target="_blank" rel="noopener noreferrer"><Icone nome="recibo" tamanho={18} />Ficha de produção</a>
       {e.status !== 'CANCELADA' && e.status !== 'ENTREGUE' && <button type="button" className="btn btn-claro" onClick={() => setAgendar(true)}><Icone nome="calendario" tamanho={18} />Agendar</button>}
       {!ajudante && Number(e.saldo) > 0 && <button type="button" className="btn btn-claro" onClick={() => setPagar(true)}><Icone nome="dinheiro" tamanho={18} />Registrar pagamento</button>}
       {proximo && <button type="button" className="btn btn-terra" onClick={() => mudar(proximo)}>Marcar como {STATUS_ENCOMENDA[proximo][0].toLowerCase()}</button>}
@@ -196,6 +228,12 @@ function Detalhe({ id, aoFechar, aoEditar }) {
             {falha && <div className="aviso aviso-erro" role="alert" style={{ marginBottom: 12 }}>{falha}</div>}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 18 }}>
               <Selo mapa={STATUS_ENCOMENDA} valor={e.status} /><span className="selo selo-areia">{FRENTES[e.frente]}</span>
+              {e.urgente && <span className="selo selo-perigo"><Icone nome="raio" tamanho={14} />Urgente</span>}
+              {!ajudante && e.status !== 'CANCELADA' && e.status !== 'ENTREGUE' && (
+                <button type="button" className="btn btn-fantasma btn-p" onClick={() => urgente(!e.urgente)}>
+                  <Icone nome="raio" tamanho={16} />{e.urgente ? 'Tirar urgência' : 'Marcar como urgente'}
+                </button>
+              )}
             </div>
             {!ajudante && <div className="grade-resumo" style={{ marginBottom: 20 }}>
               {[['Total', e.valorTotal, 'var(--areia)'], ['Recebido', e.valorPago, 'var(--oliva-claro)'], ['Falta receber', e.saldo, 'var(--terra-claro)']].map(([r, v, f]) => (
@@ -216,6 +254,7 @@ function Detalhe({ id, aoFechar, aoEditar }) {
             {e.status === 'EM_PRODUCAO' && ['A_CRIAR', 'AGUARDANDO_CLIENTE', 'AJUSTE_PEDIDO'].includes(e.statusArte) && (
               <div className="aviso aviso-info" style={{ marginTop: 16 }}>A arte ainda não foi aprovada. Espere a aprovação antes de produzir.</div>
             )}
+            {e.linkPedido && e.status !== 'CANCELADA' && <LinkPedido e={e} />}
             <ArteEncomenda e={e} aoMudar={recarregar} />
             {!ajudante && <Custos e={e} />}
             <MateriaisUsados e={e} aoMudar={() => { recarregar(); }} />
@@ -230,10 +269,73 @@ function Detalhe({ id, aoFechar, aoEditar }) {
                 </ul>
               )}
             </>}
+            <HistoricoEncomenda e={e} />
           </>
         )}
       </Estado>
     </Modal>
+  );
+}
+
+/** Link que a cliente usa para acompanhar o pedido (andamento, data, saldo e arte). */
+function LinkPedido({ e }) {
+  const toast = useToast();
+  const nome = primeiroNome(e.clienteNome);
+  const mensagem = `Oi, ${nome}! Por este link você acompanha a sua encomenda (${e.descricao}): cada etapa, a data combinada`
+    + ` e o pagamento. ${e.linkPedido}`;
+  async function copiar() {
+    try { await navigator.clipboard.writeText(e.linkPedido); toast('Link copiado.'); } catch { toast('Não deu para copiar. Selecione o link e copie à mão.'); }
+  }
+  return (
+    <section aria-labelledby={`link-${e.id}`} style={{ marginTop: 24 }}>
+      <h3 id={`link-${e.id}`} style={{ fontSize: 18, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Icone nome="link" tamanho={20} cor="var(--terra)" />Acompanhamento da cliente
+      </h3>
+      <div className="link-arte">
+        <code>{e.linkPedido}</code>
+        <button type="button" className="btn btn-claro btn-p" onClick={copiar}><Icone nome="copiar" tamanho={16} />Copiar</button>
+        <a className="btn btn-claro btn-p" href={e.linkPedido} target="_blank" rel="noopener noreferrer"><Icone nome="olho" tamanho={16} />Ver como a cliente</a>
+        {e.clienteWhatsapp && (
+          <a className="btn btn-oliva btn-p" href={linkWhats(e.clienteWhatsapp, mensagem)} target="_blank" rel="noopener noreferrer">
+            <Icone nome="whats" tamanho={16} />Mandar para {nome}
+          </a>
+        )}
+      </div>
+      <p className="mudo forte" style={{ fontSize: 13.5, marginTop: 6 }}>
+        {e.acompanhadoEm ? `${nome} abriu o link pela última vez ${dataHora(e.acompanhadoEm)}.` : `${nome} ainda não abriu o link.`}
+        {' '}Quando você abre o link logada, não conta como visita.
+      </p>
+    </section>
+  );
+}
+
+const ROTULO_ACAO = { CRIOU: 'criou', EDITOU: 'editou', VALORES: 'valores', STATUS: 'status', PAGAMENTO: 'pagamento', URGENTE: 'urgente',
+  ARTE: 'arte', VIU_ARTE: 'viu a arte', ABRIU: 'abriu o link', MATERIAL: 'material', FOTO: 'foto' };
+
+/** Linha do tempo: quem fez o quê nesta encomenda. */
+function HistoricoEncomenda({ e }) {
+  const [tudo, setTudo] = useState(false);
+  const h = useCarregar(() => api.get(`/api/encomendas/${e.id}/historico`),
+    [e.id, e.status, e.statusArte, e.valorPago, e.urgente, e.versoesArte, e.materiaisBaixados]);
+  const lista = h.dados || [];
+  const mostrar = tudo ? lista : lista.slice(0, 6);
+  return (
+    <section aria-labelledby={`hist-${e.id}`} style={{ marginTop: 24 }}>
+      <h3 id={`hist-${e.id}`} style={{ fontSize: 18, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Icone nome="historico" tamanho={20} cor="var(--terra)" />Histórico
+      </h3>
+      {!lista.length ? <p className="mudo forte">{h.carregando ? 'Carregando…' : 'Nada registrado ainda. As próximas mudanças aparecem aqui, com quem fez e quando.'}</p> : (
+        <ol className="linha-tempo">
+          {mostrar.map((x) => (
+            <li key={x.id} className={x.cliente ? 'da-cliente' : ''}>
+              <p className="lt-cabeca"><strong>{x.autor}</strong> <span className="selo selo-areia selo-p">{ROTULO_ACAO[x.acao] || x.acao.toLowerCase()}</span> <span className="mudo">{dataHora(x.criadoEm)}</span></p>
+              <p className="lt-texto">{x.descricao}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+      {lista.length > 6 && <button type="button" className="link-botao" style={{ marginTop: 6 }} onClick={() => setTudo(!tudo)}>{tudo ? 'Mostrar menos' : `Ver as ${lista.length} ações`}</button>}
+    </section>
   );
 }
 

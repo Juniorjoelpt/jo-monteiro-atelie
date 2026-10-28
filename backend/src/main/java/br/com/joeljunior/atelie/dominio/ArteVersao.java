@@ -50,6 +50,17 @@ public class ArteVersao {
     @Column(name = "respondido_em")
     private LocalDateTime respondidoEm;
 
+    /** Primeira vez que a cliente abriu esta versão pelo link. */
+    @Column(name = "vista_em")
+    private LocalDateTime vistaEm;
+
+    @Column(name = "vista_ultima_em")
+    private LocalDateTime vistaUltimaEm;
+
+    /** Visitas (aberturas com mais de 30 minutos entre elas contam separado). */
+    @Column(nullable = false)
+    private int visualizacoes;
+
     @Column(name = "criado_em", nullable = false)
     private LocalDateTime criadoEm = LocalDateTime.now();
 }

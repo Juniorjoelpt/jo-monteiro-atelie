@@ -10,6 +10,9 @@ import { ImagemProtegida } from './Encomendas.jsx';
  * Aprovação de arte dentro da encomenda: envia versões, copia/manda o link para a cliente
  * e registra o que ela respondeu pelo WhatsApp quando não usou o link.
  */
+/** Passou um dia e a cliente não abriu: o botão vira "Reenviar". */
+const jaMandou = (v) => Date.now() - new Date(v.criadoEm).getTime() > 24 * 60 * 60 * 1000;
+
 export default function ArteEncomenda({ e, aoMudar }) {
   const artes = useCarregar(() => api.get(`/api/encomendas/${e.id}/artes`), [e.id]);
   const [nova, setNova] = useState(null); // { arquivo, url, observacao }
@@ -71,19 +74,14 @@ export default function ArteEncomenda({ e, aoMudar }) {
   const mensagem = a?.link && ultima ? `Oi, ${primeiroNome(e.clienteNome)}! A arte da sua encomenda (${e.descricao}) está pronta`
     + `${ultima.numero > 1 ? ', já com os ajustes' : ''}. Dá uma olhadinha neste link e me diz se posso produzir ou se quer mudar algo: ${a.link}` : '';
 
+  const lembrarResposta = a?.link && ultima ? `Oi, ${primeiroNome(e.clienteNome)}! Vi que você já olhou a arte da sua encomenda (${e.descricao}). `
+    + `Ficou do jeitinho que você queria? É só aprovar ou pedir ajuste por aqui: ${a.link}` : '';
+
   async function mandouNoWhats() {
     // O lembrete do dia com o mesmo link some da lista (a ajudante não tem lembretes: ignora o erro)
     try { await api.post('/api/lembretes/marcar', { chave: `ARTE:${ultima.id}` }); } catch { /* sem acesso */ }
   }
 
-  async function copiar() {
-    try {
-      await navigator.clipboard.writeText(a.link);
-      toast('Link copiado.');
-    } catch {
-      setErro('Não deu para copiar. Selecione o link e copie à mão.');
-    }
-  }
 
   return (
     <section aria-labelledby={`arte-${e.id}`} style={{ marginTop: 24 }}>
@@ -134,13 +132,20 @@ export default function ArteEncomenda({ e, aoMudar }) {
         </div>
       )}
 
-      {a?.link && ultima && !encerrada && (
-        <div className="link-arte" style={{ marginBottom: 12 }}>
-          <code>{a.link}</code>
-          <button type="button" className="btn btn-claro btn-p" onClick={copiar}><Icone nome="copiar" tamanho={16} />Copiar</button>
-          {aberta && e.clienteWhatsapp && (
-            <a className="btn btn-oliva btn-p" href={linkWhats(e.clienteWhatsapp, mensagem)} target="_blank" rel="noopener noreferrer" onClick={mandouNoWhats}>
-              <Icone nome="whats" tamanho={16} />Mandar para {primeiroNome(e.clienteNome)}
+      {a?.link && aberta && !encerrada && (
+        <div className={`arte-vista ${ultima.vistaEm ? 'vista' : ''}`} style={{ marginBottom: 12 }}>
+          <Icone nome="olho" tamanho={22} />
+          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+            <p className="forte">{ultima.vistaEm ? `${primeiroNome(e.clienteNome)} já viu a arte` : `${primeiroNome(e.clienteNome)} ainda não abriu a arte`}</p>
+            <p className="mudo forte" style={{ fontSize: 13.5 }}>
+              Enviada {dataHora(ultima.criadoEm)}
+              {ultima.vistaEm && ` · vista ${dataHora(ultima.vistaEm)}`}
+              {ultima.visualizacoes > 1 && ` · abriu ${ultima.visualizacoes} vezes (a última ${dataHora(ultima.vistaUltimaEm)})`}
+            </p>
+          </div>
+          {e.clienteWhatsapp && (
+            <a className="btn btn-oliva btn-p" href={linkWhats(e.clienteWhatsapp, ultima.vistaEm ? lembrarResposta : mensagem)} target="_blank" rel="noopener noreferrer" onClick={mandouNoWhats}>
+              <Icone nome="whats" tamanho={16} />{ultima.vistaEm ? 'Lembrar de responder' : `${jaMandou(ultima) ? 'Reenviar' : 'Mandar'} para ${primeiroNome(e.clienteNome)}`}
             </a>
           )}
         </div>
@@ -178,7 +183,10 @@ export default function ArteEncomenda({ e, aoMudar }) {
                 <ImagemProtegida url={v.url} alt={`Arte versão ${v.numero}`} />
               </button>
               <div className="info">
-                <p className="forte">Versão {v.numero} <span className="mudo" style={{ fontWeight: 700 }}>· {dataHora(v.criadoEm)}</span></p>
+                <p className="forte">Versão {v.numero} <span className="mudo" style={{ fontWeight: 700 }}>· enviada {dataHora(v.criadoEm)}</span></p>
+                {v.vistaEm
+                  ? <p className="mudo forte" style={{ fontSize: 13.5 }}><Icone nome="olho" tamanho={14} /> Vista pela cliente {dataHora(v.vistaEm)}{v.visualizacoes > 1 ? ` · ${v.visualizacoes} visitas` : ''}</p>
+                  : v.resposta == null && n === 0 ? <p className="mudo forte" style={{ fontSize: 13.5 }}>Ainda não foi aberta pela cliente.</p> : null}
                 {v.observacao && <p style={{ fontSize: 14 }}><strong>Seu recado:</strong> {v.observacao}</p>}
                 {v.resposta === 'APROVADA' && <p><span className="selo selo-oliva"><Icone nome="check" tamanho={14} largura={3} />Aprovada {v.respondidaNoSistema ? '(marcada por você)' : 'pela cliente'} · {dataHora(v.respondidoEm)}</span></p>}
                 {v.resposta === 'AJUSTE' && <p><span className="selo selo-terra">Ajuste pedido {v.respondidaNoSistema ? '(marcado por você)' : 'pela cliente'}</span></p>}

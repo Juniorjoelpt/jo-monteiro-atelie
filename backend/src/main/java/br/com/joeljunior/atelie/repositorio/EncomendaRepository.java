@@ -27,6 +27,8 @@ public interface EncomendaRepository extends JpaRepository<Encomenda, Long> {
 
     java.util.Optional<Encomenda> findByCodigoArte(String codigoArte);
 
+    List<Encomenda> findByCodigoArteIsNull();
+
     /** [produtoId, peças] das encomendas não canceladas criadas desde a data. */
     @org.springframework.data.jpa.repository.Query("""
             select e.produto.id, sum(e.quantidade) from Encomenda e

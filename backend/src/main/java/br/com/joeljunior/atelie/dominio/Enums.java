@@ -51,5 +51,8 @@ public final class Enums {
 
     public enum FormaPagamento { PIX, DINHEIRO, CARTAO, OUTRO }
 
+    /** Onde aconteceu a ação registrada no histórico. */
+    public enum AreaHistorico { ENCOMENDA, VENDA, FINANCEIRO, ESTOQUE }
+
     public enum CategoriaPortfolio { PAPELARIA, CANECAS, PRESENTES, DATAS_ESPECIAIS }
 }

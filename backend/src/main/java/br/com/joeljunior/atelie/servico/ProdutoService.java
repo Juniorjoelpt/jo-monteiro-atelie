@@ -1,5 +1,6 @@
 package br.com.joeljunior.atelie.servico;
 
+import br.com.joeljunior.atelie.dominio.Enums.AreaHistorico;
 import br.com.joeljunior.atelie.dominio.Material;
 import br.com.joeljunior.atelie.dominio.Produto;
 import br.com.joeljunior.atelie.dominio.ProdutoMaterial;
@@ -33,12 +34,15 @@ public class ProdutoService {
     private final ArmazenamentoService armazenamento;
     private final br.com.joeljunior.atelie.repositorio.OrcamentoRepository orcamentos;
     private final br.com.joeljunior.atelie.repositorio.OrcamentoItemRepository itensOrcamento;
+    private final HistoricoService historico;
 
     public ProdutoService(ProdutoRepository repo, MaterialRepository materiais, EncomendaRepository encomendas,
                           VendaRepository vendas, ConsumoMaterialRepository consumos, ConsumoService consumoService,
                           PrecificacaoService precificacao, ArmazenamentoService armazenamento,
                           br.com.joeljunior.atelie.repositorio.OrcamentoRepository orcamentos,
-                          br.com.joeljunior.atelie.repositorio.OrcamentoItemRepository itensOrcamento) {
+                          br.com.joeljunior.atelie.repositorio.OrcamentoItemRepository itensOrcamento,
+                          HistoricoService historico) {
+        this.historico = historico;
         this.orcamentos = orcamentos;
         this.itensOrcamento = itensOrcamento;
         this.armazenamento = armazenamento;
@@ -97,6 +101,8 @@ public class ProdutoService {
         }
         consumoService.baixarProducao(p, quantidade);
         p.setEstoque(p.getEstoque() + quantidade);
+        historico.registrar(AreaHistorico.ESTOQUE, null, "PRODUZIU", "Produziu " + quantidade + "× " + p.getNome()
+                + " para a pronta-entrega (estoque: " + p.getEstoque() + ").", false);
         return paraResp(repo.save(p), precificacao.parametros());
     }
 

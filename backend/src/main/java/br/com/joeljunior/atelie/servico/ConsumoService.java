@@ -34,10 +34,12 @@ public class ConsumoService {
 
     private final ConsumoMaterialRepository repo;
     private final MaterialRepository materiais;
+    private final HistoricoService historico;
 
-    public ConsumoService(ConsumoMaterialRepository repo, MaterialRepository materiais) {
+    public ConsumoService(ConsumoMaterialRepository repo, MaterialRepository materiais, HistoricoService historico) {
         this.repo = repo;
         this.materiais = materiais;
+        this.historico = historico;
     }
 
     ConsumoMaterial baixar(Material m, BigDecimal quantidade, OrigemConsumo origem, Encomenda e, Produto p) {
@@ -102,6 +104,8 @@ public class ConsumoService {
             throw new RegraNegocioException("Este registro é de produção para o estoque e não pode ser desfeito aqui.");
         }
         devolver(c);
+        historico.encomenda(c.getEncomenda(), "MATERIAL", "Devolveu ao estoque: " + c.getMaterial().getNome() + " ("
+                + c.getQuantidade().stripTrailingZeros().toPlainString() + " " + c.getMaterial().getUnidade() + ").");
     }
 
     /** Devolve tudo o que a encomenda consumiu (usado ao excluir uma encomenda lançada por engano). */

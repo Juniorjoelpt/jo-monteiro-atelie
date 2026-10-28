@@ -151,7 +151,11 @@ public final class Dtos {
             StatusEncomenda status,
             @Size(max = 4000) String observacoes,
             @Size(max = 2000, message = "Personalização de até 2000 caracteres.") String personalizacao,
-            Boolean precisaArte) {
+            Boolean precisaArte,
+            Boolean urgente) {
+    }
+
+    public record UrgenteReq(@NotNull(message = "Informe se é urgente.") Boolean urgente) {
     }
 
     public record EncomendaResp(Long id, Long clienteId, String clienteNome, String clienteWhatsapp, Long orcamentoId,
@@ -161,7 +165,9 @@ public final class Dtos {
                                 BigDecimal valorPago, BigDecimal saldo, LocalDate prazoEntrega,
                                 StatusEncomenda status, String observacoes, LocalDateTime criadoEm,
                                 CustosEncomenda custos, LocalDate entregueEm,
-                                String personalizacao, StatusArte statusArte, int versoesArte) {
+                                String personalizacao, StatusArte statusArte, int versoesArte,
+                                boolean urgente, String linkPedido, LocalDateTime acompanhadoEm,
+                                LocalDateTime arteVistaEm) {
     }
 
     /**
@@ -197,13 +203,14 @@ public final class Dtos {
 
     public record ArteVersaoResp(Long id, int numero, String url, String observacao, RespostaArte resposta,
                                  String comentarioCliente, boolean respondidaNoSistema, LocalDateTime respondidoEm,
-                                 LocalDateTime criadoEm) {
+                                 LocalDateTime criadoEm, LocalDateTime vistaEm, LocalDateTime vistaUltimaEm,
+                                 int visualizacoes) {
     }
 
     public record ResumoArtes(long aFazer, long ajustesPedidos, long comCliente) {
     }
 
-    /** link = página que a cliente abre para aprovar (só existe depois do primeiro envio). */
+    /** link = página do pedido, em que a cliente acompanha o andamento e aprova a arte. */
     public record ArtesEncomenda(StatusArte status, String link, List<ArteVersaoResp> versoes) {
     }
 
@@ -218,7 +225,28 @@ public final class Dtos {
     }
 
     public record ArtePublica(String atelie, String whatsappAtelie, String cliente, String descricao,
-                              String personalizacao, StatusArte status, List<VersaoPublica> versoes) {
+                              String personalizacao, StatusArte status, List<VersaoPublica> versoes,
+                              AndamentoPublico andamento) {
+    }
+
+    /**
+     * O que a cliente vê do andamento pelo link: etapa, data combinada e quanto falta pagar.
+     * Sem telefone, sem custos. A chave Pix só vai quando há saldo.
+     */
+    public record AndamentoPublico(StatusEncomenda status, int quantidade, LocalDate prazoEntrega, LocalDate entregueEm,
+                                   BigDecimal valorTotal, BigDecimal valorPago, BigDecimal saldo, BigDecimal valorSinal,
+                                   String chavePix, String titularPix, LocalDateTime criadoEm) {
+    }
+
+    /** A página do pedido avisa qual versão da arte apareceu na tela. */
+    public record VistoReq(Long versaoId) {
+    }
+
+    // ---------- Histórico ----------
+
+    /** cliente = feito pela cliente pelo link. */
+    public record HistoricoResp(Long id, AreaHistorico area, Long encomendaId, String encomenda, String autor,
+                                boolean cliente, String acao, String descricao, LocalDateTime criadoEm) {
     }
 
     public record RespostaArteReq(

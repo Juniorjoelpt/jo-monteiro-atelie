@@ -30,8 +30,13 @@ public class UrlPublica {
         return "";
     }
 
-    /** Página em que a cliente vê e aprova a arte da encomenda. */
+    /** Página do pedido: a cliente acompanha o andamento, vê o saldo e aprova a arte. */
+    public String pedido(String codigo) {
+        return base() + "/pedido/" + codigo;
+    }
+
+    /** Mesmo link do pedido (os links antigos /arte/ continuam abrindo). */
     public String arte(String codigo) {
-        return base() + "/arte/" + codigo;
+        return pedido(codigo);
     }
 }

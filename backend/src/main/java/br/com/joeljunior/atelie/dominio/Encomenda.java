@@ -75,13 +75,28 @@ public class Encomenda {
     @Column(name = "status_arte", nullable = false, length = 20)
     private StatusArte statusArte = StatusArte.SEM_ARTE;
 
-    /** Código do link que a cliente abre para aprovar a arte (gerado no primeiro envio). */
+    /** Código do link do pedido: a cliente acompanha o andamento e aprova a arte (gerado ao criar a encomenda). */
     @Column(name = "codigo_arte", length = 36)
     private String codigoArte;
 
     @Column(name = "entregue_em")
     private LocalDate entregueEm;
 
+    /** Sai primeiro no quadro de produção e ganha destaque na lista. */
+    @Column(nullable = false)
+    private boolean urgente;
+
+    /** Última vez que a cliente abriu o link do pedido (sem contar quem está logada no sistema). */
+    @Column(name = "acompanhado_em")
+    private LocalDateTime acompanhadoEm;
+
     @Column(name = "criado_em", nullable = false)
     private LocalDateTime criadoEm = LocalDateTime.now();
+
+    @PrePersist
+    void gerarCodigo() {
+        if (codigoArte == null) {
+            codigoArte = java.util.UUID.randomUUID().toString();
+        }
+    }
 }

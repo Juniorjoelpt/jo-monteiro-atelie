@@ -20,6 +20,8 @@ import Compras from './admin/Compras.jsx';
 import ContasFixas from './admin/ContasFixas.jsx';
 import Depoimentos from './admin/Depoimentos.jsx';
 import AprovarArte from './site/AprovarArte.jsx';
+import FichaProducao from './admin/FichaProducao.jsx';
+import Historico from './admin/Historico.jsx';
 import { TrocarSenha } from './admin/Configuracoes.jsx';
 import { Topo } from './admin/Layout.jsx';
 
@@ -38,7 +40,9 @@ export default function App() {
       <Route path="/" element={<Loja />} />
       <Route path="/catalogo" element={<Loja modo="catalogo" />} />
       <Route path="/arte/:codigo" element={<AprovarArte />} />
+      <Route path="/pedido/:codigo" element={<AprovarArte />} />
       <Route path="/admin/entrar" element={<Entrar />} />
+      <Route path="/admin/encomendas/:id/ficha" element={<Protegido><FichaProducao /></Protegido>} />
       <Route path="/admin" element={<Protegido><Layout /></Protegido>}>
         <Route index element={<Painel />} />
         <Route path="orcamentos" element={<SoAdmin><Orcamentos /></SoAdmin>} />
@@ -47,6 +51,7 @@ export default function App() {
         <Route path="vendas" element={<Vendas />} />
         <Route path="agenda" element={<Agenda />} />
         <Route path="relatorios" element={<SoAdmin><Relatorios /></SoAdmin>} />
+        <Route path="historico" element={<SoAdmin><Historico /></SoAdmin>} />
         <Route path="lembretes" element={<SoAdmin><Lembretes /></SoAdmin>} />
         <Route path="clientes" element={<SoAdmin><Clientes /></SoAdmin>} />
         <Route path="financeiro" element={<SoAdmin><Financeiro /></SoAdmin>} />

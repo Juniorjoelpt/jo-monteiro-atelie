@@ -22,9 +22,11 @@ public class FinanceiroService {
     private final LancamentoRepository repo;
     private final EncomendaRepository encomendas;
     private final EncomendaService encomendaService;
+    private final HistoricoService historico;
 
     public FinanceiroService(LancamentoRepository repo, EncomendaRepository encomendas,
-                             EncomendaService encomendaService) {
+                             EncomendaService encomendaService, HistoricoService historico) {
+        this.historico = historico;
         this.repo = repo;
         this.encomendas = encomendas;
         this.encomendaService = encomendaService;
@@ -62,21 +64,30 @@ public class FinanceiroService {
     public LancamentoResp criar(LancamentoReq r) {
         Lancamento l = new Lancamento();
         preencher(l, r);
-        return paraResp(repo.save(l));
+        repo.save(l);
+        historico.registrar(AreaHistorico.FINANCEIRO, null, "LANCOU", "Lançou " + descrever(l) + ".", true);
+        return paraResp(l);
     }
 
     @Transactional
     public LancamentoResp atualizar(Long id, LancamentoReq r) {
         Lancamento l = buscar(id);
         bloquearAutomatico(l);
+        String antes = descrever(l);
         preencher(l, r);
-        return paraResp(repo.save(l));
+        repo.save(l);
+        String depois = descrever(l);
+        if (!antes.equals(depois)) {
+            historico.registrar(AreaHistorico.FINANCEIRO, null, "EDITOU", "Editou o lançamento: " + antes + " → " + depois + ".", true);
+        }
+        return paraResp(l);
     }
 
     @Transactional
     public void excluir(Long id) {
         Lancamento l = buscar(id);
         bloquearAutomatico(l);
+        historico.registrar(AreaHistorico.FINANCEIRO, l.getEncomenda(), "EXCLUIU", "Excluiu o lançamento " + descrever(l) + ".", true);
         repo.delete(l);
     }
 
@@ -146,5 +157,11 @@ public class FinanceiroService {
 
     static LocalDate hoje() {
         return LocalDate.now();
+    }
+
+    private static String descrever(Lancamento l) {
+        return (l.getTipo() == TipoLancamento.ENTRADA ? "entrada" : "saída") + " de " + HistoricoService.pdfMoeda(l.getValor())
+                + " (“" + l.getDescricao() + "”, " + "%02d/%02d/%d".formatted(l.getData().getDayOfMonth(),
+                l.getData().getMonthValue(), l.getData().getYear()) + ")";
     }
 }

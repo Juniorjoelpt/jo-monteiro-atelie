@@ -29,9 +29,11 @@ public class FotoService {
     private final EncomendaRepository encomendas;
     private final ArmazenamentoService armazenamento;
     private final PortfolioService portfolio;
+    private final HistoricoService historico;
 
     public FotoService(EncomendaFotoRepository repo, EncomendaRepository encomendas,
-                       ArmazenamentoService armazenamento, PortfolioService portfolio) {
+                       ArmazenamentoService armazenamento, PortfolioService portfolio, HistoricoService historico) {
+        this.historico = historico;
         this.repo = repo;
         this.encomendas = encomendas;
         this.armazenamento = armazenamento;
@@ -56,6 +58,7 @@ public class FotoService {
         String leg = Texto.limpar(legenda);
         f.setLegenda(leg == null ? null : leg.substring(0, Math.min(160, leg.length())));
         f.setArquivo(armazenamento.salvarImagemPrivada(arquivo));
+        historico.encomenda(e, "FOTO", "Enviou uma foto " + (f.getTipo() == TipoFoto.PRONTA ? "da peça pronta." : "de referência."));
         return paraResp(repo.save(f));
     }
 
@@ -73,6 +76,8 @@ public class FotoService {
     @Transactional
     public void excluir(Long fotoId) {
         EncomendaFoto f = buscar(fotoId);
+        historico.encomenda(f.getEncomenda(), "FOTO", "Excluiu uma foto " + (f.getTipo() == TipoFoto.PRONTA
+                ? "da peça pronta." : "de referência."));
         repo.delete(f);
         armazenamento.excluirPrivada(f.getArquivo());
     }
@@ -96,6 +101,7 @@ public class FotoService {
         String publico = armazenamento.publicarCopia(f.getArquivo());
         PortfolioItem item = portfolio.criarComArquivo(titulo.substring(0, Math.min(140, titulo.length())), cat, publico);
         f.setPortfolioItemId(item.getId());
+        historico.encomenda(e, "FOTO", "Publicou a foto da peça pronta no portfólio do site.");
         return paraResp(repo.save(f));
     }
 

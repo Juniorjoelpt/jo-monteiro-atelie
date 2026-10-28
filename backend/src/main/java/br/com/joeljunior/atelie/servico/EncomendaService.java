@@ -36,13 +36,18 @@ public class EncomendaService {
     private final br.com.joeljunior.atelie.repositorio.EncomendaFotoRepository fotos;
     private final br.com.joeljunior.atelie.repositorio.CompromissoRepository compromissos;
     private final br.com.joeljunior.atelie.repositorio.ArteVersaoRepository artes;
+    private final HistoricoService historico;
+    private final UrlPublica url;
 
     public EncomendaService(EncomendaRepository repo, LancamentoRepository lancamentos, ClienteService clientes,
                             ProdutoRepository produtos, ConsumoService consumos, PrecificacaoService precificacao,
                             br.com.joeljunior.atelie.repositorio.EncomendaFotoRepository fotos,
                             br.com.joeljunior.atelie.repositorio.CompromissoRepository compromissos,
-                            br.com.joeljunior.atelie.repositorio.ArteVersaoRepository artes) {
+                            br.com.joeljunior.atelie.repositorio.ArteVersaoRepository artes,
+                            HistoricoService historico, UrlPublica url) {
         this.artes = artes;
+        this.historico = historico;
+        this.url = url;
         this.fotos = fotos;
         this.compromissos = compromissos;
         this.repo = repo;
@@ -84,24 +89,101 @@ public class EncomendaService {
         if (r.status() != null) {
             e.setStatus(r.status());
         }
-        return salvarEProcessar(e);
+        EncomendaResp resp = salvarEProcessar(e);
+        historico.encomenda(e, "CRIOU", "Criou a encomenda para " + e.getCliente().getNome()
+                + (e.getPrazoEntrega() == null ? "" : ", entrega em " + data(e.getPrazoEntrega()))
+                + " (" + rotulo(e.getStatus()).toLowerCase() + ")" + (e.isUrgente() ? ", marcada como urgente" : "") + ".");
+        historico.encomendaValor(e, "VALORES", "Valor total " + HistoricoService.pdfMoeda(e.getValorTotal())
+                + ", sinal " + HistoricoService.pdfMoeda(e.getValorSinal()) + ".");
+        return resp;
     }
 
     @Transactional
     public EncomendaResp atualizar(Long id, EncomendaReq r) {
         Encomenda e = buscar(id);
+        Retrato antes = Retrato.de(e);
         preencher(e, r);
         if (r.status() != null) {
             e.setStatus(r.status());
         }
-        return salvarEProcessar(e);
+        EncomendaResp resp = salvarEProcessar(e);
+        registrarEdicao(e, antes, Retrato.de(e));
+        return resp;
     }
 
     @Transactional
     public EncomendaResp mudarStatus(Long id, StatusEncomenda status) {
         Encomenda e = buscar(id);
+        StatusEncomenda antes = e.getStatus();
         e.setStatus(status);
-        return salvarEProcessar(e);
+        EncomendaResp resp = salvarEProcessar(e);
+        if (antes != status) {
+            historico.encomenda(e, "STATUS", "Mudou o status: " + rotulo(antes) + " → " + rotulo(status) + ".");
+        }
+        return resp;
+    }
+
+    @Transactional
+    public EncomendaResp marcarUrgente(Long id, boolean urgente) {
+        Encomenda e = buscar(id);
+        if (e.isUrgente() != urgente) {
+            e.setUrgente(urgente);
+            repo.save(e);
+            historico.encomenda(e, "URGENTE", urgente ? "Marcou como urgente." : "Tirou a marcação de urgente.");
+        }
+        return paraResp(e);
+    }
+
+    /** O que a tela de edição pode mudar, para registrar no histórico só o que mudou. */
+    private record Retrato(String cliente, String descricao, String peca, int quantidade, java.time.LocalDate prazo,
+                           StatusEncomenda status, String personalizacao, String observacoes, boolean urgente,
+                           StatusArte arte, BigDecimal total, BigDecimal sinal, BigDecimal horas) {
+        static Retrato de(Encomenda e) {
+            return new Retrato(e.getCliente().getNome(), e.getDescricao(),
+                    e.getProduto() == null ? null : e.getProduto().getNome(), e.getQuantidade(), e.getPrazoEntrega(),
+                    e.getStatus(), e.getPersonalizacao(), e.getObservacoes(), e.isUrgente(), e.getStatusArte(),
+                    e.getValorTotal(), e.getValorSinal(), e.getHorasTrabalhadas());
+        }
+    }
+
+    private void registrarEdicao(Encomenda e, Retrato a, Retrato d) {
+        List<String> gerais = java.util.stream.Stream.of(
+                HistoricoService.mudanca("Cliente", a.cliente(), d.cliente()),
+                HistoricoService.mudanca("Descrição", a.descricao(), d.descricao()),
+                HistoricoService.mudanca("Peça da ficha", a.peca(), d.peca()),
+                HistoricoService.mudanca("Quantidade", a.quantidade(), d.quantidade()),
+                HistoricoService.mudanca("Entrega", a.prazo(), d.prazo()),
+                a.status() == d.status() ? null : "Status: " + rotulo(a.status()) + " → " + rotulo(d.status()),
+                HistoricoService.mudanca("Personalização", a.personalizacao(), d.personalizacao()),
+                HistoricoService.mudanca("Observações", a.observacoes(), d.observacoes()),
+                a.urgente() == d.urgente() ? null : (d.urgente() ? "Marcada como urgente" : "Sem urgência"),
+                a.arte() == d.arte() ? null : "Arte: " + (d.arte() == StatusArte.SEM_ARTE ? "não precisa" : "precisa de arte"))
+                .filter(java.util.Objects::nonNull).toList();
+        List<String> valores = java.util.stream.Stream.of(
+                HistoricoService.mudanca("Valor total", a.total(), d.total()),
+                HistoricoService.mudanca("Sinal", a.sinal(), d.sinal()),
+                HistoricoService.mudanca("Horas trabalhadas", a.horas(), d.horas()))
+                .filter(java.util.Objects::nonNull).toList();
+        if (!gerais.isEmpty()) {
+            historico.encomenda(e, "EDITOU", "Editou: " + String.join("; ", gerais) + ".");
+        }
+        if (!valores.isEmpty()) {
+            historico.encomendaValor(e, "VALORES", "Mudou valores: " + String.join("; ", valores) + ".");
+        }
+    }
+
+    public static String rotulo(StatusEncomenda s) {
+        return switch (s) {
+            case AGUARDANDO_SINAL -> "Aguardando sinal";
+            case EM_PRODUCAO -> "Em produção";
+            case PRONTA -> "Pronta";
+            case ENTREGUE -> "Entregue";
+            case CANCELADA -> "Cancelada";
+        };
+    }
+
+    private static String data(java.time.LocalDate d) {
+        return "%02d/%02d/%d".formatted(d.getDayOfMonth(), d.getMonthValue(), d.getYear());
     }
 
     /** Salva e, se a peça entrou em produção, baixa os materiais da ficha. */
@@ -143,10 +225,13 @@ public class EncomendaService {
         l.setFormaPagamento(r.formaPagamento() == null ? FormaPagamento.PIX : r.formaPagamento());
         l.setEncomenda(e);
         lancamentos.save(l);
+        historico.encomendaValor(e, "PAGAMENTO", "Registrou pagamento de " + HistoricoService.pdfMoeda(r.valor())
+                + " (" + forma(l.getFormaPagamento()) + ") com data de " + data(l.getData()) + ".");
 
         BigDecimal novoPago = pago.add(r.valor());
         if (e.getStatus() == StatusEncomenda.AGUARDANDO_SINAL && novoPago.compareTo(e.getValorSinal()) >= 0) {
             e.setStatus(StatusEncomenda.EM_PRODUCAO);
+            historico.encomenda(e, "STATUS", "Sinal pago: a encomenda entrou em produção.");
             return salvarEProcessar(e);
         }
         return paraResp(e);
@@ -162,7 +247,11 @@ public class EncomendaService {
 
     @Transactional
     public ConsumoResp registrarConsumo(Long id, ConsumoReq r) {
-        return consumos.registrarManual(buscar(id), r.materialId(), r.quantidade());
+        Encomenda e = buscar(id);
+        ConsumoResp c = consumos.registrarManual(e, r.materialId(), r.quantidade());
+        historico.encomenda(e, "MATERIAL", "Registrou material extra: " + c.materialNome() + " ("
+                + c.quantidade().stripTrailingZeros().toPlainString() + " " + c.unidade() + ").");
+        return c;
     }
 
     /** Baixa a ficha agora, sem esperar a mudança de status. */
@@ -176,6 +265,7 @@ public class EncomendaService {
             throw new RegraNegocioException("Os materiais da ficha já foram baixados.");
         }
         consumos.baixarFicha(e);
+        historico.encomenda(e, "MATERIAL", "Baixou do estoque os materiais da ficha.");
         return paraResp(repo.save(e));
     }
 
@@ -189,6 +279,8 @@ public class EncomendaService {
             throw new RegraNegocioException("Esta encomenda tem fotos, artes ou compromissos na agenda. Cancele em vez de excluir.");
         }
         consumos.estornarTudo(id);
+        historico.registrar(AreaHistorico.ENCOMENDA, null, "EXCLUIU", "Excluiu a encomenda “" + e.getDescricao()
+                + "” de " + e.getCliente().getNome() + ".", false);
         repo.delete(e);
     }
 
@@ -221,6 +313,18 @@ public class EncomendaService {
         e.setObservacoes(Texto.limpar(r.observacoes()));
         e.setPersonalizacao(Texto.limpar(r.personalizacao()));
         definirSeTemArte(e, r.precisaArte());
+        if (r.urgente() != null) {
+            e.setUrgente(r.urgente());
+        }
+    }
+
+    private static String forma(FormaPagamento f) {
+        return switch (f) {
+            case PIX -> "Pix";
+            case DINHEIRO -> "dinheiro";
+            case CARTAO -> "cartão";
+            case OUTRO -> "outra forma";
+        };
     }
 
     /** Liga ou desliga a etapa de arte. Depois de enviada uma versão, o andamento segue pelas artes. */
@@ -277,6 +381,9 @@ public class EncomendaService {
                 e.getQuantidade(), e.getHorasTrabalhadas(), e.isMateriaisBaixados(),
                 e.getValorTotal(), e.getValorSinal(), pago, saldo,
                 e.getPrazoEntrega(), e.getStatus(), e.getObservacoes(), e.getCriadoEm(), custos(e), e.getEntregueEm(),
-                e.getPersonalizacao(), e.getStatusArte(), e.getId() == null ? 0 : (int) artes.countByEncomendaId(e.getId()));
+                e.getPersonalizacao(), e.getStatusArte(), e.getId() == null ? 0 : (int) artes.countByEncomendaId(e.getId()),
+                e.isUrgente(), e.getCodigoArte() == null ? null : url.pedido(e.getCodigoArte()), e.getAcompanhadoEm(),
+                e.getId() == null ? null : artes.findFirstByEncomendaIdOrderByNumeroDesc(e.getId())
+                        .map(br.com.joeljunior.atelie.dominio.ArteVersao::getVistaEm).orElse(null));
     }
 }

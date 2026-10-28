@@ -29,10 +29,13 @@ public class GestaoController {
     private final MaterialService materiais;
     private final PortfolioService portfolio;
     private final ConfiguracaoService configuracao;
+    private final HistoricoService historico;
 
     public GestaoController(PainelService painel, ClienteService clientes, OrcamentoService orcamentos,
                             EncomendaService encomendas, FinanceiroService financeiro,
-                            MaterialService materiais, PortfolioService portfolio, ConfiguracaoService configuracao) {
+                            MaterialService materiais, PortfolioService portfolio, ConfiguracaoService configuracao,
+                            HistoricoService historico) {
+        this.historico = historico;
         this.painel = painel;
         this.clientes = clientes;
         this.orcamentos = orcamentos;
@@ -159,6 +162,27 @@ public class GestaoController {
             throw new AcessoNegadoException("A ajudante pode marcar a encomenda como pronta ou entregue.");
         }
         return encomendas.mudarStatus(id, r.status());
+    }
+
+    @PatchMapping("/encomendas/{id}/urgente")
+    public EncomendaResp urgente(@PathVariable Long id, @Valid @RequestBody UrgenteReq r) {
+        return encomendas.marcarUrgente(id, r.urgente());
+    }
+
+    /** Linha do tempo da encomenda (a ajudante não vê as linhas que falam de dinheiro). */
+    @GetMapping("/encomendas/{id}/historico")
+    public List<HistoricoResp> historicoEncomenda(@PathVariable Long id) {
+        encomendas.detalhar(id);
+        return historico.daEncomenda(id);
+    }
+
+    /** Histórico geral: só a administradora. usuario = -1 mostra só o que as clientes fizeram pelo link. */
+    @GetMapping("/historico")
+    public List<HistoricoResp> historico(@RequestParam(required = false) java.time.LocalDate de,
+                                         @RequestParam(required = false) java.time.LocalDate ate,
+                                         @RequestParam(required = false) br.com.joeljunior.atelie.dominio.Enums.AreaHistorico area,
+                                         @RequestParam(required = false) Long usuario) {
+        return historico.buscar(de, ate, area, usuario);
     }
 
     @PostMapping("/encomendas/{id}/pagamentos")

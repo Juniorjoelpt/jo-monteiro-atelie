@@ -6,8 +6,8 @@ Desenvolvido por Joel Júnior.
 
 - **Loja** (`/` e `/catalogo`): layout de loja com menu de categorias, busca, banner, vitrines (pronta-entrega, destaques, mais pedidos, para presentear), inspiração, como funciona, depoimentos e a **sacola de orçamento** ao lado.
   A cliente junta as peças na sacola e manda tudo num **pedido de orçamento**, com personalização e até 3 fotos de referência.
-- **Aprovação de arte** (`/arte/<código>`): a cliente vê o mockup da encomenda e aprova ou pede ajuste, sem senha.
-- **Sistema** (`/admin`): painel, orçamentos, encomendas com artes, produtos (fichas técnicas e catálogo), vendas, agenda, clientes, financeiro, relatórios, materiais, portfólio e configurações.
+- **Meu pedido** (`/pedido/<código>`): a cliente acompanha as etapas da encomenda, a data combinada e o saldo (com a chave Pix), e aprova a arte ou pede ajuste, sem senha. Os links antigos `/arte/<código>` continuam abrindo.
+- **Sistema** (`/admin`): painel, orçamentos, encomendas (lista ou quadro de produção, com artes e ficha para imprimir), produtos (fichas técnicas e catálogo), vendas, agenda, clientes, financeiro, relatórios, histórico, materiais, portfólio e configurações.
 
 **Tecnologias:** Spring Boot 3.4 (Java 21), MySQL 8 com Flyway, React 18 + Vite, login com JWT.
 
@@ -46,7 +46,7 @@ Desenvolvido por Joel Júnior.
 - **Página da cliente:** mostra a arte grande, o que foi combinado e uma lista para conferir (nomes e datas, cores, posição das fotos).
   - "Aprovar a arte" pede uma confirmação ("Posso produzir com esta arte?") e aceita um recado.
   - "Pedir ajuste" exige escrever o que mudar. A resposta aparece no sistema na hora.
-  - O link não mostra valores nem o telefone da cliente, e para de abrir se a encomenda for cancelada.
+  - O link mostra o total, o que já foi pago e o saldo, mas nunca o telefone da cliente nem os custos. Ele para de abrir se a encomenda for cancelada.
 - **Ajuste pedido:** a Jô envia a nova versão; a versão anterior e o comentário ficam no histórico (para a Jô e para a cliente).
   Só a última versão pode ser respondida.
 - **Resposta pelo WhatsApp:** os botões "Aprovou" e "Pediu ajuste" registram o que a cliente disse fora do link.
@@ -54,6 +54,27 @@ Desenvolvido por Joel Júnior.
 - A versão mais recente pode ser excluída enquanto a cliente não respondeu (para corrigir um envio errado).
 - O **painel** mostra artes a criar, ajustes pedidos e artes com a cliente; o menu Encomendas mostra quantas artes faltam fazer,
   e a lista de encomendas tem o filtro pela situação da arte.
+
+### Meu pedido, quadro de produção e histórico
+
+- **Link do pedido:** toda encomenda nasce com o seu link (`/pedido/<código>`), mesmo antes da arte.
+  - Na encomenda, em "Acompanhamento da cliente": copiar, ver como a cliente e mandar pelo WhatsApp com a mensagem pronta.
+  - A cliente vê as etapas (pedido confirmado → arte aprovada → em produção → pronta → entregue), a data combinada e quanto falta pagar, com a chave Pix e o botão de copiar. Quando tudo está pago, a chave some.
+  - Para escolas e empresas, a saudação usa o nome completo.
+  - O sistema guarda a última vez que a cliente abriu o link. Quem abre logada no sistema não conta.
+- **Arte vista:** cada versão registra quando a cliente a viu pela primeira vez, a última vez e quantas visitas fez (aberturas com menos de 30 minutos entre elas contam como uma).
+  - Na encomenda: "ainda não abriu a arte" (com o botão Mandar, que vira Reenviar depois de um dia) ou "já viu a arte" (com Lembrar de responder).
+  - Na lista de encomendas, a coluna Arte diz se a arte com a cliente já foi vista.
+- **Quadro de produção** (Encomendas › Quadro): colunas Aguardando sinal, Arte em andamento, Produzir, Prontas e Entregues (7 dias).
+  - Urgentes primeiro, depois a entrega mais próxima. Selos de prazo: atrasada, hoje, amanhã, em N dias.
+  - Botões no cartão: Pronta, Entregue e o raio de urgente (só a administradora marca urgente). No celular, as colunas deslizam para o lado.
+- **Ficha de produção** (botão na encomenda): página para imprimir ou salvar em PDF numa folha A4, sem valores.
+  - Traz a data em destaque, urgente, quantidade, personalização em letra grande, a arte aprovada (ou o aviso de que ainda não foi aprovada), as fotos de referência, os materiais da ficha × quantidade, uma lista para conferir e espaço para anotações.
+- **Histórico** (menu Histórico, só a administradora): quem fez o quê e quando, por período, área e pessoa.
+  - Inclui "Clientes (pelo link)". Cada encomenda também mostra a sua linha do tempo.
+  - Registra: criação e edição da encomenda (só o que mudou, com antes → depois), status, urgente, pagamentos, artes enviadas, marcadas ou excluídas, respostas e visualizações da cliente, fotos, materiais, vendas, lançamentos do financeiro, compras, uso e entrada de material e produção de pronta-entrega.
+  - As linhas que falam de dinheiro não aparecem para a ajudante.
+  - Excluir uma encomenda deixa o registro no histórico geral.
 
 ### Custos, preço e pronta-entrega
 

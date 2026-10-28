@@ -155,3 +155,65 @@ export const TIPOS_PECA = [
 
 /** Cores dos gráficos: laranja da marca, roxo e azul-jeans da mascote, amarelo da caderneta… (validadas para daltonismo). */
 export const CORES_GRAFICO = ['#D8501A', '#6A47A8', '#1F6E8C', '#E3A21B', '#C2507A', '#3E8E5A'];
+
+/** Dias de hoje até a data (negativo = já passou). */
+export function diasAte(iso) {
+  if (!iso) return null;
+  const [a, m, d] = iso.slice(0, 10).split('-').map(Number);
+  const alvo = Date.UTC(a, m - 1, d);
+  const h = new Date();
+  const hoje = Date.UTC(h.getFullYear(), h.getMonth(), h.getDate());
+  return Math.round((alvo - hoje) / 86400000);
+}
+
+/** Prazo para os cartões do quadro: [texto, cor do selo] ou null sem data. */
+export function prazoSelo(iso) {
+  const n = diasAte(iso);
+  if (n == null) return null;
+  if (n < 0) return [n === -1 ? 'Atrasada 1 dia' : `Atrasada ${-n} dias`, 'perigo'];
+  if (n === 0) return ['Entrega hoje', 'terra'];
+  if (n === 1) return ['Entrega amanhã', 'ocre'];
+  if (n <= 7) return [`Em ${n} dias`, 'ocre'];
+  return [data(iso), 'areia'];
+}
+
+/** "2026-11-14" → "sexta-feira, 14 de novembro" */
+export function dataExtensa(iso) {
+  if (!iso) return '';
+  return new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+/**
+ * Etapas do pedido como a cliente vê: confirmado (sinal), arte (se tiver), produção, pronta, entregue.
+ * Cada etapa: { chave, rotulo, feito, texto }. A etapa atual é a primeira não feita.
+ */
+export function etapasPedido({ status, statusArte, valorSinal }) {
+  const depois = (lista) => lista.includes(status);
+  const confirmado = status !== 'AGUARDANDO_SINAL';
+  const temArte = statusArte && statusArte !== 'SEM_ARTE';
+  const arteOk = !temArte || statusArte === 'APROVADA';
+  const etapas = [
+    { chave: 'pedido', rotulo: 'Pedido confirmado', feito: confirmado,
+      texto: confirmado ? 'Sinal recebido: a sua data está garantida.'
+        : Number(valorSinal) > 0 ? `Falta o sinal de ${moeda(valorSinal)} para garantir a sua data.` : 'Esperando a confirmação do pedido.' },
+  ];
+  if (temArte) {
+    etapas.push({ chave: 'arte', rotulo: 'Arte aprovada', feito: statusArte === 'APROVADA',
+      texto: {
+        A_CRIAR: 'Estou criando a arte da sua peça.',
+        AGUARDANDO_CLIENTE: 'A sua arte está pronta! Confira e responda logo abaixo.',
+        AJUSTE_PEDIDO: 'Estou fazendo os ajustes que você pediu.',
+        APROVADA: 'Você aprovou a arte.',
+      }[statusArte] });
+  }
+  etapas.push(
+    { chave: 'producao', rotulo: 'Em produção', feito: depois(['PRONTA', 'ENTREGUE']),
+      texto: depois(['PRONTA', 'ENTREGUE']) ? 'Produzida à mão, com carinho.'
+        : status === 'EM_PRODUCAO' && arteOk ? 'A sua peça está sendo feita agora.' : 'Começa assim que as etapas acima ficarem prontas.' },
+    { chave: 'pronta', rotulo: 'Pronta', feito: depois(['PRONTA', 'ENTREGUE']),
+      texto: status === 'PRONTA' ? 'Prontinha e embalada! Vou combinar a entrega com você.' : status === 'ENTREGUE' ? 'Ficou pronta.' : 'Você recebe uma mensagem quando ficar pronta.' },
+    { chave: 'entregue', rotulo: 'Entregue', feito: status === 'ENTREGUE', texto: status === 'ENTREGUE' ? 'Entregue. Espero que você ame!' : '' },
+  );
+  const atual = etapas.findIndex((e) => !e.feito);
+  return etapas.map((e, i) => ({ ...e, atual: i === atual }));
+}

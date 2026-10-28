@@ -33,9 +33,17 @@ public class ArteService {
     private final ArmazenamentoService armazenamento;
     private final ConfiguracaoService configuracao;
     private final UrlPublica url;
+    private final HistoricoService historico;
+    private final br.com.joeljunior.atelie.repositorio.LancamentoRepository lancamentos;
+
+    /** Aberturas com menos de 30 minutos entre elas contam como a mesma visita. */
+    private static final long MINUTOS_VISITA = 30;
 
     public ArteService(ArteVersaoRepository repo, EncomendaRepository encomendas, ArmazenamentoService armazenamento,
-                       ConfiguracaoService configuracao, UrlPublica url) {
+                       ConfiguracaoService configuracao, UrlPublica url, HistoricoService historico,
+                       br.com.joeljunior.atelie.repositorio.LancamentoRepository lancamentos) {
+        this.historico = historico;
+        this.lancamentos = lancamentos;
         this.repo = repo;
         this.encomendas = encomendas;
         this.armazenamento = armazenamento;
@@ -50,7 +58,7 @@ public class ArteService {
         Encomenda e = buscarEncomenda(encomendaId);
         List<ArteVersaoResp> versoes = repo.findByEncomendaIdOrderByNumeroDesc(encomendaId).stream()
                 .map(ArteService::paraResp).toList();
-        return new ArtesEncomenda(e.getStatusArte(), e.getCodigoArte() == null ? null : url.arte(e.getCodigoArte()),
+        return new ArtesEncomenda(e.getStatusArte(), e.getCodigoArte() == null ? null : url.pedido(e.getCodigoArte()),
                 versoes);
     }
 
@@ -77,6 +85,8 @@ public class ArteService {
         }
         e.setStatusArte(StatusArte.AGUARDANDO_CLIENTE);
         encomendas.save(e);
+        historico.encomenda(e, "ARTE", "Enviou a versão " + v.getNumero() + " da arte para a cliente aprovar"
+                + (v.getObservacao() == null ? "." : ", com o recado: “" + v.getObservacao() + "”."));
         return daEncomenda(encomendaId);
     }
 
@@ -93,6 +103,10 @@ public class ArteService {
             case APROVADA -> {
                 if (ultima != null && ultima.getResposta() == null) {
                     responderVersao(ultima, RespostaArte.APROVADA, comentario, true);
+                    historico.encomenda(e, "ARTE", "Marcou a versão " + ultima.getNumero()
+                            + " da arte como aprovada (a cliente respondeu fora do link).");
+                } else if (e.getStatusArte() != StatusArte.APROVADA) {
+                    historico.encomenda(e, "ARTE", "Marcou a arte como aprovada fora do sistema.");
                 }
                 e.setStatusArte(StatusArte.APROVADA);
             }
@@ -108,10 +122,16 @@ public class ArteService {
                 }
                 responderVersao(ultima, RespostaArte.AJUSTE, comentario, true);
                 e.setStatusArte(StatusArte.AJUSTE_PEDIDO);
+                historico.encomenda(e, "ARTE", "Registrou ajuste pedido pela cliente na versão " + ultima.getNumero()
+                        + ": “" + comentario + "”.");
             }
             case A_CRIAR, SEM_ARTE -> {
                 if (ultima != null) {
                     throw new RegraNegocioException("Esta encomenda já tem arte enviada. Exclua as versões para mudar.");
+                }
+                if (e.getStatusArte() != r.status()) {
+                    historico.encomenda(e, "ARTE", r.status() == StatusArte.SEM_ARTE
+                            ? "Marcou que a encomenda não precisa de arte." : "Marcou que a encomenda precisa de arte.");
                 }
                 e.setStatusArte(r.status());
             }
@@ -138,6 +158,7 @@ public class ArteService {
         repo.flush();
         armazenamento.excluirPrivada(v.getArquivo());
         Encomenda e = v.getEncomenda();
+        historico.encomenda(e, "ARTE", "Excluiu a versão " + v.getNumero() + " da arte (antes da resposta da cliente).");
         e.setStatusArte(repo.findFirstByEncomendaIdOrderByNumeroDesc(encomendaId)
                 .map(ArteService::situacao).orElse(StatusArte.A_CRIAR));
         encomendas.save(e);
@@ -173,12 +194,56 @@ public class ArteService {
         var cfg = configuracao.atual();
         List<ArteVersao> versoes = repo.findByEncomendaIdOrderByNumeroDesc(e.getId());
         Long atual = versoes.isEmpty() ? null : versoes.get(0).getId();
-        return new ArtePublica(cfg.getNomeAtelie(), cfg.getWhatsapp(), primeiroNome(e.getCliente().getNome()),
+        java.math.BigDecimal pago = lancamentos.totalPagoEncomenda(e.getId());
+        java.math.BigDecimal saldo = e.getValorTotal().subtract(pago).max(java.math.BigDecimal.ZERO);
+        boolean comSaldo = saldo.signum() > 0;
+        var andamento = new AndamentoPublico(e.getStatus(), e.getQuantidade(), e.getPrazoEntrega(), e.getEntregueEm(),
+                e.getValorTotal(), pago, saldo, e.getValorSinal(), comSaldo ? cfg.getChavePix() : null,
+                comSaldo ? cfg.getTitularPix() : null, e.getCriadoEm());
+        // Escola e empresa: "Oi, Escola Pequeno Príncipe!" (o primeiro nome seria só "Escola")
+        var c = e.getCliente();
+        String saudacao = c.getTipo() == br.com.joeljunior.atelie.dominio.Enums.TipoCliente.ESCOLA
+                || c.getTipo() == br.com.joeljunior.atelie.dominio.Enums.TipoCliente.EMPRESA ? c.getNome() : primeiroNome(c.getNome());
+        return new ArtePublica(cfg.getNomeAtelie(), cfg.getWhatsapp(), saudacao,
                 e.getDescricao(), e.getPersonalizacao(), e.getStatusArte(),
                 versoes.stream().map(v -> new VersaoPublica(v.getId(), v.getNumero(),
                         "/api/publico/artes/" + codigo + "/versoes/" + v.getId() + "/arquivo", v.getObservacao(),
                         v.getResposta(), v.getComentarioCliente(), v.getRespondidoEm(), v.getCriadoEm(),
-                        v.getId().equals(atual))).toList());
+                        v.getId().equals(atual))).toList(), andamento);
+    }
+
+    /**
+     * A página do pedido avisa que abriu (e qual versão da arte apareceu na tela).
+     * Quem está logada no sistema não conta: assim a Jô pode conferir o link sem marcar como visto.
+     */
+    @Transactional
+    public void visto(String codigo, Long versaoId) {
+        if (HistoricoService.temLogin()) {
+            return;
+        }
+        Encomenda e = porCodigo(codigo);
+        LocalDateTime agora = LocalDateTime.now();
+        if (e.getAcompanhadoEm() == null) {
+            historico.daCliente(e, "ABRIU", "Abriu o link do pedido pela primeira vez.");
+        }
+        e.setAcompanhadoEm(agora);
+        encomendas.save(e);
+        if (versaoId == null) {
+            return;
+        }
+        ArteVersao ultima = repo.findFirstByEncomendaIdOrderByNumeroDesc(e.getId()).orElse(null);
+        if (ultima == null || !ultima.getId().equals(versaoId)) {
+            return;
+        }
+        if (ultima.getVistaEm() == null) {
+            ultima.setVistaEm(agora);
+            historico.daCliente(e, "VIU_ARTE", "Viu a versão " + ultima.getNumero() + " da arte pela primeira vez.");
+        }
+        if (ultima.getVistaUltimaEm() == null || ultima.getVistaUltimaEm().plusMinutes(MINUTOS_VISITA).isBefore(agora)) {
+            ultima.setVisualizacoes(ultima.getVisualizacoes() + 1);
+        }
+        ultima.setVistaUltimaEm(agora);
+        repo.save(ultima);
     }
 
     @Transactional(readOnly = true)
@@ -213,12 +278,15 @@ public class ArteService {
         if (Boolean.TRUE.equals(r.aprovar())) {
             responderVersao(ultima, RespostaArte.APROVADA, comentario, false);
             e.setStatusArte(StatusArte.APROVADA);
+            historico.daCliente(e, "ARTE", "Aprovou a versão " + ultima.getNumero() + " da arte"
+                    + (comentario == null ? "." : ", com o recado: “" + comentario + "”."));
         } else {
             if (comentario == null || comentario.length() < 3) {
                 throw new RegraNegocioException("Conte o que você gostaria de mudar na arte.");
             }
             responderVersao(ultima, RespostaArte.AJUSTE, comentario, false);
             e.setStatusArte(StatusArte.AJUSTE_PEDIDO);
+            historico.daCliente(e, "ARTE", "Pediu ajuste na versão " + ultima.getNumero() + ": “" + comentario + "”.");
         }
         encomendas.save(e);
         return publica(codigo);
@@ -263,7 +331,7 @@ public class ArteService {
     private static ArteVersaoResp paraResp(ArteVersao v) {
         return new ArteVersaoResp(v.getId(), v.getNumero(), "/api/artes/" + v.getId() + "/arquivo", v.getObservacao(),
                 v.getResposta(), v.getComentarioCliente(), v.isRespondidaNoSistema(), v.getRespondidoEm(),
-                v.getCriadoEm());
+                v.getCriadoEm(), v.getVistaEm(), v.getVistaUltimaEm(), v.getVisualizacoes());
     }
 
     private static String primeiroNome(String nome) {

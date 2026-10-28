@@ -31,8 +31,11 @@ public class CompraService {
     private final MaterialRepository materiais;
     private final LancamentoRepository lancamentos;
 
+    private final HistoricoService historico;
+
     public CompraService(CompraRepository compras, CompraItemRepository itens, FornecedorRepository fornecedores,
-                         MaterialRepository materiais, LancamentoRepository lancamentos) {
+                         MaterialRepository materiais, LancamentoRepository lancamentos, HistoricoService historico) {
+        this.historico = historico;
         this.compras = compras;
         this.itens = itens;
         this.fornecedores = fornecedores;
@@ -172,6 +175,9 @@ public class CompraService {
             l.setCompra(c);
             lancamentos.save(l);
         }
+        historico.registrar(AreaHistorico.ESTOQUE, null, "COMPROU", "Registrou a compra nº " + c.getId() + " ("
+                + c.getItens().size() + (c.getItens().size() == 1 ? " material" : " materiais") + ", total "
+                + HistoricoService.pdfMoeda(c.getTotal()) + ").", true);
         return paraResp(c);
     }
 
@@ -197,6 +203,8 @@ public class CompraService {
             materiais.save(m);
         }
         lancamentos.deleteByCompraId(c.getId());
+        historico.registrar(AreaHistorico.ESTOQUE, null, "CANCELOU", "Cancelou a compra nº " + c.getId()
+                + " (" + HistoricoService.pdfMoeda(c.getTotal()) + "); os materiais saíram do estoque.", true);
         return paraResp(c);
     }
 

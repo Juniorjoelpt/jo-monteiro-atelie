@@ -33,11 +33,13 @@ public class OrcamentoService {
     private final ArmazenamentoService armazenamento;
     private final OrcamentoItemRepository itens;
     private final PrecificacaoService precificacao;
+    private final HistoricoService historico;
 
     public OrcamentoService(OrcamentoRepository repo, OrcamentoFotoRepository fotos, EncomendaRepository encomendas,
                             EncomendaFotoRepository fotosEncomenda, EncomendaService encomendaService,
                             ClienteService clientes, ProdutoRepository produtos, ArmazenamentoService armazenamento,
-                            OrcamentoItemRepository itens, PrecificacaoService precificacao) {
+                            OrcamentoItemRepository itens, PrecificacaoService precificacao, HistoricoService historico) {
+        this.historico = historico;
         this.itens = itens;
         this.precificacao = precificacao;
         this.repo = repo;
@@ -214,6 +216,9 @@ public class OrcamentoService {
         e.setPersonalizacao(pers != null ? pers : o.getPersonalizacao());
         EncomendaService.definirSeTemArte(e, r.precisaArte() == null || r.precisaArte());
         EncomendaResp resp = encomendaService.salvarEProcessar(e);
+        historico.encomenda(e, "CRIOU", "Aprovou o orçamento nº " + o.getId() + " e criou a encomenda para " + c.getNome() + ".");
+        historico.encomendaValor(e, "VALORES", "Valor total " + HistoricoService.pdfMoeda(e.getValorTotal())
+                + ", sinal " + HistoricoService.pdfMoeda(e.getValorSinal()) + ".");
 
         // As fotos de referência do pedido passam para a encomenda (cópias: cada uma tem a sua)
         for (OrcamentoFoto f : fotos.findByOrcamentoIdOrderByIdAsc(id)) {

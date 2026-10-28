@@ -279,3 +279,17 @@ O Flyway aplica sozinho as mudanças no banco, sem apagar dados.
 - Fotos validadas pelo conteúdo do arquivo (JPG, PNG ou WEBP, até 8 MB). Fotos de orçamento, encomendas e artes ficam fora da pasta pública.
 - Link de aprovação de arte com código aleatório, limite de acessos por IP e sem valores nem dados da cliente.
 - Rotas `/api/**` exigem login, exceto `/api/publico/**`.
+
+## Abrir no celular (mesma rede Wi-Fi)
+
+1. No computador, descubra o IP: `ipconfig` (linha "Endereço IPv4", ex.: 192.168.0.15).
+2. Libere a porta no firewall do Windows (PowerShell **como administrador**, uma vez só):
+   ```
+   New-NetFirewallRule -DisplayName "Atelie Jo Monteiro" -Direction Inbound -Protocol TCP -LocalPort 8080,5173 -Action Allow -Profile Private
+   ```
+   A rede Wi-Fi precisa estar como **Privada** (Configurações › Rede e Internet › Wi-Fi › Tipo de perfil de rede).
+3. No celular, conectado ao mesmo Wi-Fi: `http://192.168.0.15:8080` (site) e `http://192.168.0.15:8080/admin` (sistema).
+   Com `npm run dev`, use a porta 5173.
+
+Fora de casa (4G ou para as clientes abrirem o link do pedido), o sistema precisa estar publicado na VPS com `URL_PUBLICA`.
+

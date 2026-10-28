@@ -270,7 +270,7 @@ export default function Loja({ modo = 'inicio' }) {
               {atelie.horario && <p>{atelie.horario}</p>}
               {atelie.whatsapp && <p>WhatsApp {telefone(atelie.whatsapp)}</p>}
             </div>
-            <p className="mudo">© {new Date().getFullYear()} {atelie.nomeAtelie || 'Ateliê Jô Monteiro'} · Site por MS Soluções Inteligentes · <Link to="/admin">Área da Jô</Link></p>
+            <p className="mudo">© {new Date().getFullYear()} {atelie.nomeAtelie || 'Ateliê Jô Monteiro'} · Site por Joel Júnior · <Link to="/admin">Área da Jô</Link></p>
           </footer>
         </main>
 

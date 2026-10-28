@@ -11,11 +11,11 @@
         <relativePath/>
     </parent>
 
-    <groupId>br.com.mssolucoes</groupId>
+    <groupId>br.com.joeljunior</groupId>
     <artifactId>jo-monteiro-atelie</artifactId>
     <version>1.0.0</version>
     <name>Ateliê Jô Monteiro</name>
-    <description>Sistema de gestão e site do Ateliê Jô Monteiro — MS Soluções Inteligentes</description>
+    <description>Sistema de gestão e site do Ateliê Jô Monteiro — Joel Júnior</description>
 
     <properties>
         <java.version>21</java.version>

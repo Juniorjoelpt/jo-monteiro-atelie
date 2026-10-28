@@ -2,7 +2,7 @@
 
 Site do ateliê de papelaria criativa e presentes personalizados (cadernetas, canecas, garrafas, Bíblias, kits e cestas)
 e sistema de gestão, num único aplicativo. Feito a partir da base do sistema do Lenne Carvalho Ateliê.
-Desenvolvido pela MS Soluções Inteligentes.
+Desenvolvido por Joel Júnior.
 
 - **Loja** (`/` e `/catalogo`): layout de loja com menu de categorias, busca, banner, vitrines (pronta-entrega, destaques, mais pedidos, para presentear), inspiração, como funciona, depoimentos e a **sacola de orçamento** ao lado.
   A cliente junta as peças na sacola e manda tudo num **pedido de orçamento**, com personalização e até 3 fotos de referência.

@@ -5,6 +5,13 @@ import react from '@vitejs/plugin-react';
 // "npm run build" gera o site dentro do backend (src/main/resources/static),
 // então o Spring Boot serve tudo junto no mesmo endereço.
 // Celular na mesma rede: http://<IP do computador>:8080 (libere a porta no firewall do Windows).
+// Para o navegador, site e API estão no mesmo endereço (o Vite repassa). Sem tirar o cabeçalho Origin,
+// o Spring Boot recusaria por CORS quem abre pelo IP da rede (celular): ele só conhece http://localhost:5173.
+const backend = {
+  target: 'http://localhost:8080',
+  configure: (proxy) => proxy.on('proxyReq', (req) => req.removeHeader('origin')),
+};
+
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -12,8 +19,8 @@ export default defineConfig({
     // Aceita o celular na mesma rede Wi-Fi (http://<IP do computador>:5173)
     host: true,
     proxy: {
-      '/api': 'http://localhost:8080',
-      '/uploads': 'http://localhost:8080',
+      '/api': backend,
+      '/uploads': backend,
     },
   },
   build: {

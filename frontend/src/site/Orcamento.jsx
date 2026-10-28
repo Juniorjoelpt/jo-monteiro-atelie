@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import Icone from '../componentes/Icone.jsx';
-import Marca, { SemImagem } from '../componentes/Marca.jsx';
+import { Mascote, SemImagem } from '../componentes/Marca.jsx';
 import { reduzirImagem } from '../componentes/imagens.js';
 import { TIPOS_PECA, hojeIso, moeda, whatsAtelie } from '../util.js';
 import { sacola } from './sacola.js';
@@ -110,7 +110,7 @@ export default function Orcamento({ whatsapp, itens, tipoInicial }) {
             <li><Icone nome="check" tamanho={16} largura={3} />Embalagem pronta para presentear</li>
           </ul>
         </div>
-        <Marca variante="mascote" decorativa style={{ width: 110, alignSelf: 'flex-end' }} />
+        <Mascote pose="apontando" style={{ width: 150, alignSelf: 'flex-end' }} />
       </div>
 
       <div className="orcamento-form">

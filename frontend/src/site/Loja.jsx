@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import Icone from '../componentes/Icone.jsx';
-import Marca, { SemImagem } from '../componentes/Marca.jsx';
+import Marca, { Mascote, SemImagem } from '../componentes/Marca.jsx';
 import { CATEGORIAS_PORTFOLIO, moeda, telefone, whatsAtelie } from '../util.js';
 import { CATEGORIAS, CartaoPeca, DetalhePeca, daCategoria } from './Catalogo.jsx';
 import Orcamento from './Orcamento.jsx';
@@ -10,11 +10,11 @@ import { sacola, useSacola } from './sacola.js';
 
 const SLIDES = [
   { lema: 'papelaria criativa & presentes únicos', titulo: ['Presentes que', 'contam a sua história'],
-    texto: 'Papelaria • Canecas • Kits • Lembrancinhas', botao: 'Ver as peças', destino: '#vitrines' },
+    texto: 'Papelaria • Canecas • Kits • Lembrancinhas', botao: 'Ver as peças', destino: '#vitrines', pose: 'acenando' },
   { lema: 'datas especiais', titulo: ['Kits para', 'quem você ama'],
-    texto: 'Dia dos Professores • Dia das Mães • Namorados • Natal', botao: 'Pedir um kit', tipo: 'Kit ou cesta de presente' },
+    texto: 'Dia dos Professores • Dia das Mães • Namorados • Natal', botao: 'Pedir um kit', tipo: 'Kit ou cesta de presente', pose: 'bebe' },
   { lema: 'escolas e empresas', titulo: ['Lembrancinhas', 'com o nome de cada um'],
-    texto: 'Pedidos em quantidade, com a sua arte aprovada antes', botao: 'Pedir orçamento', tipo: 'Lembrancinhas (festa, escola, empresa)' },
+    texto: 'Pedidos em quantidade, com a sua arte aprovada antes', botao: 'Pedir orçamento', tipo: 'Lembrancinhas (festa, escola, empresa)', pose: 'notebook' },
 ];
 
 const PASSOS = [
@@ -150,7 +150,7 @@ export default function Loja({ modo = 'inicio' }) {
         <div className="loja-promo">
           <p>Pequenos<br />detalhes,</p>
           <p className="cursiva">grandes afetos</p>
-          <Marca variante="mascote" decorativa />
+          <Mascote pose="raposa" />
         </div>
         <div className="loja-menu-rodape">
           {atelie.instagram && <a href={`https://www.instagram.com/${atelie.instagram}/`} target="_blank" rel="noopener noreferrer"><Icone nome="instagram" tamanho={20} />@{atelie.instagram}</a>}
@@ -242,7 +242,7 @@ export default function Loja({ modo = 'inicio' }) {
 
           {modo === 'inicio' && !termo && (
             <section id="sobre" className="loja-secao sobre-loja">
-              <div className="sobre-foto"><Marca variante="circular" decorativa /></div>
+              <div className="sobre-foto"><Mascote pose="garrafa-raposa" /></div>
               <div style={{ flex: '1 1 340px', minWidth: 0 }}>
                 <p className="sobretitulo">quem sou</p>
                 <h2 className="titulo-secao" style={{ marginBottom: 12 }}>Prazer, Jô Monteiro!</h2>
@@ -340,7 +340,7 @@ function Banner({ aoPedir, aoVer }) {
       </div>
       <div className="banner-arte" aria-hidden="true">
         <span className="banner-circulo" />
-        <Marca variante="mascote" decorativa />
+        <Mascote key={s.pose} pose={s.pose} />
         <span className="banner-bilhete b1 maquina">amor em<br />papel</span>
         <span className="banner-bilhete b2 cursiva">e porcelana</span>
       </div>
@@ -458,7 +458,7 @@ function Sacola({ s, aoFechar, aoPedir }) {
       </div>
       {s.itens.length === 0 ? (
         <div className="sacola-vazia">
-          <Marca variante="simbolo" decorativa />
+          <Mascote pose="pensando" />
           <p>Sua sacola está vazia.</p>
           <small>Toque na sacolinha das peças para juntar tudo num pedido só.</small>
         </div>

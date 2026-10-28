@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api.js';
 import Icone from '../componentes/Icone.jsx';
-import Marca from '../componentes/Marca.jsx';
+import Marca, { Mascote } from '../componentes/Marca.jsx';
 import { dataHora, whatsAtelie } from '../util.js';
 
 /**
@@ -192,7 +192,7 @@ export default function AprovarArte() {
             )}
 
             <div className="bloco" style={{ background: 'var(--terra-claro)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 18, padding: '22px 28px' }}>
-              <Marca variante="simbolo" decorativa style={{ width: 64 }} />
+              <Mascote pose="notebook" style={{ width: 84 }} />
               <p style={{ flex: '1 1 260px', fontWeight: 800 }}>Ficou com alguma dúvida? Fale direto comigo.</p>
               <a className="btn btn-terra" href={whatsAtelie(arte.whatsappAtelie, textoWhats)} target="_blank" rel="noopener noreferrer">
                 <Icone nome="whats" tamanho={18} />Falar no WhatsApp

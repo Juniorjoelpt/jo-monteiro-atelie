@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { api, sessao } from '../api.js';
 import Icone from '../componentes/Icone.jsx';
-import Marca from '../componentes/Marca.jsx';
+import { Mascote } from '../componentes/Marca.jsx';
 import { Estado, Selo, useCarregar, Vazio } from '../componentes/ui.jsx';
 import { CORES_GRAFICO, STATUS_ARTE, STATUS_ENCOMENDA, dataCurta, moeda, moedaCurta, primeiroNome, qtdUn } from '../util.js';
 import { Topo } from './Layout.jsx';
@@ -62,7 +62,7 @@ function Conteudo({ p }) {
               : <>Você tem {frases.reduce((a, f, i) => (i === 0 ? [f] : [...a, ' e ', f]), [])}.</>}
           </p>
         </div>
-        <Marca variante="simbolo" decorativa style={{ width: 120, flex: '0 0 auto' }} />
+        <Mascote pose="acenando" style={{ width: 110, flex: '0 0 auto', marginBottom: -24 }} />
       </section>
 
       <section className="grade-resumo" aria-label="Resumo">

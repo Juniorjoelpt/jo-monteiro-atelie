@@ -1,0 +1,49 @@
+package br.com.mssolucoes.atelie.repositorio;
+
+import br.com.mssolucoes.atelie.dominio.Encomenda;
+import br.com.mssolucoes.atelie.dominio.Enums.StatusArte;
+import br.com.mssolucoes.atelie.dominio.Enums.StatusEncomenda;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
+
+public interface EncomendaRepository extends JpaRepository<Encomenda, Long> {
+
+    @EntityGraph(attributePaths = "cliente")
+    List<Encomenda> findAllByOrderByCriadoEmDesc();
+
+    @EntityGraph(attributePaths = "cliente")
+    List<Encomenda> findByStatusInOrderByPrazoEntregaAsc(Collection<StatusEncomenda> status);
+
+    @EntityGraph(attributePaths = "cliente")
+    List<Encomenda> findByClienteIdOrderByCriadoEmDesc(Long clienteId);
+
+    long countByStatusIn(Collection<StatusEncomenda> status);
+
+    long countByStatusInAndStatusArteIn(Collection<StatusEncomenda> status, Collection<StatusArte> arte);
+
+    java.util.Optional<Encomenda> findByCodigoArte(String codigoArte);
+
+    @EntityGraph(attributePaths = "cliente")
+    List<Encomenda> findByStatusInAndStatusArte(Collection<StatusEncomenda> status, StatusArte arte);
+
+    long countByStatusInAndPrazoEntregaBetween(Collection<StatusEncomenda> status, LocalDate de, LocalDate ate);
+
+    boolean existsByOrcamentoId(Long orcamentoId);
+
+    java.util.Optional<Encomenda> findFirstByOrcamentoId(Long orcamentoId);
+
+    boolean existsByProdutoId(Long produtoId);
+
+    @EntityGraph(attributePaths = "cliente")
+    List<Encomenda> findByPrazoEntregaBetweenOrderByPrazoEntregaAsc(LocalDate de, LocalDate ate);
+
+    @EntityGraph(attributePaths = {"cliente", "produto"})
+    List<Encomenda> findByStatusAndEntregueEmBetween(StatusEncomenda status, LocalDate de, LocalDate ate);
+
+    @EntityGraph(attributePaths = "cliente")
+    List<Encomenda> findByStatusIn(Collection<StatusEncomenda> status);
+}

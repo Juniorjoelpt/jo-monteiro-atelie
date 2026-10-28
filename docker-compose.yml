@@ -1,0 +1,49 @@
+# Ateliê Jô Monteiro — produção
+# Uso: copie .env.exemplo para .env, preencha e rode:  docker compose up -d --build
+services:
+  banco:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: jo_atelie
+      MYSQL_USER: atelie
+      MYSQL_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?defina DB_ROOT_PASSWORD no .env}
+      TZ: America/Fortaleza
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - banco:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      banco:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://banco:3306/jo_atelie?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Fortaleza&characterEncoding=UTF-8
+      DB_USER: atelie
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
+      ADMIN_NOME: ${ADMIN_NOME:-Jô Monteiro}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?defina ADMIN_EMAIL no .env}
+      ADMIN_SENHA: ${ADMIN_SENHA:?defina ADMIN_SENHA no .env}
+      CORS_ORIGENS: ${CORS_ORIGENS:-}
+      URL_PUBLICA: ${URL_PUBLICA:-}
+      TZ: America/Fortaleza
+    volumes:
+      - uploads:/data/uploads
+      - privado:/data/privado
+    # Só escuta na própria VPS; o Nginx publica no domínio com HTTPS
+    ports:
+      - "127.0.0.1:${APP_PORTA:-8086}:8080"
+
+volumes:
+  banco:
+  uploads:
+  privado:

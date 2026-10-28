@@ -1,0 +1,25 @@
+# Ajustes para servidores de 1 GB de memória (Google Cloud e2-micro, Azure B2ats/B2pts).
+# Use junto com o arquivo principal:
+#   docker compose -f docker-compose.yml -f docker-compose.pequena.yml up -d --build
+# Bom para demonstração; para uso diário prefira um servidor com 2 GB ou mais.
+services:
+  banco:
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --performance-schema=OFF
+      - --innodb-buffer-pool-size=64M
+      - --innodb-log-buffer-size=8M
+      - --max-connections=30
+      - --table-open-cache=256
+      - --tmp-table-size=16M
+      - --max-heap-table-size=16M
+      - --key-buffer-size=8M
+      - --thread-cache-size=4
+
+  app:
+    environment:
+      JAVA_TOOL_OPTIONS: >-
+        -Xmx256m -Xss512k -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=64m
+        -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Duser.timezone=America/Fortaleza
+      SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: "5"

@@ -1,0 +1,53 @@
+server:
+  port: ${PORT:8080}
+  # Atrás do Nginx: respeita X-Forwarded-Proto/Host para montar links https corretos
+  forward-headers-strategy: native
+  servlet:
+    encoding:
+      charset: UTF-8
+      # Só nas requisições: forçar nas respostas acrescentaria charset em imagens e PDFs
+      force-request: true
+
+spring:
+  application:
+    name: jo-monteiro-atelie
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/jo_atelie?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Fortaleza&characterEncoding=UTF-8}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: America/Fortaleza
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 8MB
+      # Orçamento do site: até 3 fotos de referência (o navegador já reduz antes de enviar)
+      max-request-size: 20MB
+  jackson:
+    time-zone: America/Fortaleza
+    serialization:
+      write-dates-as-timestamps: false
+
+atelie:
+  jwt:
+    # Troque em produção (mínimo 32 caracteres). Ex.: variável de ambiente JWT_SECRET
+    secret: ${JWT_SECRET:troque-este-segredo-em-producao-jo-monteiro-atelie-2026}
+    expiracao-horas: ${JWT_EXPIRACAO_HORAS:12}
+  admin:
+    # Usuário criado automaticamente na primeira execução, se não houver nenhum
+    nome: ${ADMIN_NOME:Jô Monteiro}
+    email: ${ADMIN_EMAIL:jo@atelie.local}
+    senha: ${ADMIN_SENHA:trocar123}
+  # Endereço do site nos links enviados às clientes (aprovação de arte). Vazio = o endereço aberto no navegador.
+  url-publica: ${URL_PUBLICA:}
+  uploads-dir: ${UPLOADS_DIR:./uploads}
+  # Fotos das encomendas: fora da pasta pública, só abrem com login
+  uploads-privados-dir: ${UPLOADS_PRIVADOS_DIR:./uploads-privados}
+  cors-origens: ${CORS_ORIGENS:http://localhost:5173}

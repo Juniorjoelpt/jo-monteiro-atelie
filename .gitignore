@@ -1,0 +1,15 @@
+.env
+backend/target/
+backend/uploads/
+backend/uploads-privados/
+backend/src/main/resources/static/
+frontend/node_modules/
+frontend/dist/
+.idea/
+nbproject/
+*.log
+
+# Configuração local de cada computador (senha do MySQL etc.)
+backend/config/
+backend/nb-configuration.xml
+backend/nbactions.xml

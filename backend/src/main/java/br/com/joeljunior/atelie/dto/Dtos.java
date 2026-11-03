@@ -167,7 +167,7 @@ public final class Dtos {
                                 CustosEncomenda custos, LocalDate entregueEm,
                                 String personalizacao, StatusArte statusArte, int versoesArte,
                                 boolean urgente, String linkPedido, LocalDateTime acompanhadoEm,
-                                LocalDateTime arteVistaEm) {
+                                LocalDateTime arteVistaEm, TipoCliente clienteTipo) {
     }
 
     /**

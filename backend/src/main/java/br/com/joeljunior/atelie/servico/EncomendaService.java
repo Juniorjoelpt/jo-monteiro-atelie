@@ -384,6 +384,6 @@ public class EncomendaService {
                 e.getPersonalizacao(), e.getStatusArte(), e.getId() == null ? 0 : (int) artes.countByEncomendaId(e.getId()),
                 e.isUrgente(), e.getCodigoArte() == null ? null : url.pedido(e.getCodigoArte()), e.getAcompanhadoEm(),
                 e.getId() == null ? null : artes.findFirstByEncomendaIdOrderByNumeroDesc(e.getId())
-                        .map(br.com.joeljunior.atelie.dominio.ArteVersao::getVistaEm).orElse(null));
+                        .map(br.com.joeljunior.atelie.dominio.ArteVersao::getVistaEm).orElse(null), c.getTipo());
     }
 }

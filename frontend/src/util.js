@@ -60,6 +60,9 @@ export const whatsAtelie = (numero, texto) => linkWhats(numero, texto) || LINK_O
 
 export const primeiroNome = (nome) => (nome || '').trim().split(/\s+/)[0] || '';
 
+/** Como chamar a cliente nas mensagens: escola e empresa pelo nome completo, pessoa pelo primeiro nome. */
+export const saudacao = (nome, tipo) => (tipo === 'ESCOLA' || tipo === 'EMPRESA' ? (nome || '').trim() : primeiroNome(nome));
+
 // ---------- Rótulos e cores dos status ----------
 
 export const STATUS_ORCAMENTO = {

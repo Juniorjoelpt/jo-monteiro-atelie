@@ -4,7 +4,7 @@ import { api, sessao } from '../api.js';
 import { FormCompromisso } from './Agenda.jsx';
 import Icone from '../componentes/Icone.jsx';
 import { Campo, Confirmar, Estado, Modal, ModalForm, Selo, lerForm, useCarregar, useToast, Vazio } from '../componentes/ui.jsx';
-import { FORMAS, FRENTES, STATUS_ARTE, STATUS_ENCOMENDA, data, dataHora, hojeIso, linkWhats, moeda, moedaUnit, primeiroNome, qtd, qtdUn, telefone } from '../util.js';
+import { FORMAS, FRENTES, STATUS_ARTE, STATUS_ENCOMENDA, data, dataHora, hojeIso, linkWhats, moeda, moedaUnit, qtd, saudacao, qtdUn, telefone } from '../util.js';
 import Quadro from './Quadro.jsx';
 import ArteEncomenda from './ArteEncomenda.jsx';
 import CamposFicha from '../componentes/CamposFicha.jsx';
@@ -280,7 +280,7 @@ function Detalhe({ id, aoFechar, aoEditar }) {
 /** Link que a cliente usa para acompanhar o pedido (andamento, data, saldo e arte). */
 function LinkPedido({ e }) {
   const toast = useToast();
-  const nome = primeiroNome(e.clienteNome);
+  const nome = saudacao(e.clienteNome, e.clienteTipo);
   const mensagem = `Oi, ${nome}! Por este link você acompanha a sua encomenda (${e.descricao}): cada etapa, a data combinada`
     + ` e o pagamento. ${e.linkPedido}`;
   async function copiar() {

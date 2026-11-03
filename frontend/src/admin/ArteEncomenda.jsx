@@ -3,7 +3,7 @@ import { api } from '../api.js';
 import Icone from '../componentes/Icone.jsx';
 import { reduzirImagem } from '../componentes/imagens.js';
 import { Modal, Selo, useCarregar, useToast } from '../componentes/ui.jsx';
-import { STATUS_ARTE, dataHora, linkWhats, primeiroNome } from '../util.js';
+import { STATUS_ARTE, dataHora, linkWhats, saudacao } from '../util.js';
 import { ImagemProtegida } from './Encomendas.jsx';
 
 /**
@@ -71,10 +71,10 @@ export default function ArteEncomenda({ e, aoMudar }) {
       `Arte: ${STATUS_ARTE[status][0].toLowerCase()}.`);
   }
 
-  const mensagem = a?.link && ultima ? `Oi, ${primeiroNome(e.clienteNome)}! A arte da sua encomenda (${e.descricao}) está pronta`
+  const mensagem = a?.link && ultima ? `Oi, ${saudacao(e.clienteNome, e.clienteTipo)}! A arte da sua encomenda (${e.descricao}) está pronta`
     + `${ultima.numero > 1 ? ', já com os ajustes' : ''}. Dá uma olhadinha neste link e me diz se posso produzir ou se quer mudar algo: ${a.link}` : '';
 
-  const lembrarResposta = a?.link && ultima ? `Oi, ${primeiroNome(e.clienteNome)}! Vi que você já olhou a arte da sua encomenda (${e.descricao}). `
+  const lembrarResposta = a?.link && ultima ? `Oi, ${saudacao(e.clienteNome, e.clienteTipo)}! Vi que você já olhou a arte da sua encomenda (${e.descricao}). `
     + `Ficou do jeitinho que você queria? É só aprovar ou pedir ajuste por aqui: ${a.link}` : '';
 
   async function mandouNoWhats() {
@@ -136,7 +136,7 @@ export default function ArteEncomenda({ e, aoMudar }) {
         <div className={`arte-vista ${ultima.vistaEm ? 'vista' : ''}`} style={{ marginBottom: 12 }}>
           <Icone nome="olho" tamanho={22} />
           <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-            <p className="forte">{ultima.vistaEm ? `${primeiroNome(e.clienteNome)} já viu a arte` : `${primeiroNome(e.clienteNome)} ainda não abriu a arte`}</p>
+            <p className="forte">{ultima.vistaEm ? `${saudacao(e.clienteNome, e.clienteTipo)} já viu a arte` : `${saudacao(e.clienteNome, e.clienteTipo)} ainda não abriu a arte`}</p>
             <p className="mudo forte" style={{ fontSize: 13.5 }}>
               Enviada {dataHora(ultima.criadoEm)}
               {ultima.vistaEm && ` · vista ${dataHora(ultima.vistaEm)}`}
@@ -145,7 +145,7 @@ export default function ArteEncomenda({ e, aoMudar }) {
           </div>
           {e.clienteWhatsapp && (
             <a className="btn btn-oliva btn-p" href={linkWhats(e.clienteWhatsapp, ultima.vistaEm ? lembrarResposta : mensagem)} target="_blank" rel="noopener noreferrer" onClick={mandouNoWhats}>
-              <Icone nome="whats" tamanho={16} />{ultima.vistaEm ? 'Lembrar de responder' : `${jaMandou(ultima) ? 'Reenviar' : 'Mandar'} para ${primeiroNome(e.clienteNome)}`}
+              <Icone nome="whats" tamanho={16} />{ultima.vistaEm ? 'Lembrar de responder' : `${jaMandou(ultima) ? 'Reenviar' : 'Mandar'} para ${saudacao(e.clienteNome, e.clienteTipo)}`}
             </a>
           )}
         </div>

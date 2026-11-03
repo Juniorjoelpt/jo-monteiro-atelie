@@ -74,7 +74,7 @@ public class LembreteService {
             if (jaEnviado == null) {
                 todos.add(new LembreteResp("ARTE:" + v.getId(), "ARTE",
                         "Arte para aprovar: " + e.getDescricao(), "Versão " + v.getNumero(), c.getNome(), c.getWhatsapp(),
-                        "Oi, " + primeiro(c.getNome()) + "! A arte da sua encomenda (" + e.getDescricao()
+                        "Oi, " + saudacao(c) + "! A arte da sua encomenda (" + e.getDescricao()
                                 + ") está pronta" + (v.getNumero() > 1 ? ", já com os ajustes" : "")
                                 + ". Dá uma olhadinha neste link e me diz se posso produzir ou se quer mudar algo: "
                                 + link + " " + assinatura(cfg), enviada));
@@ -82,7 +82,7 @@ public class LembreteService {
                 todos.add(new LembreteResp("ARTELEMBRAR:" + v.getId(), "ARTE",
                         "Arte sem resposta: " + e.getDescricao(),
                         "Enviada em " + DIA.format(jaEnviado.getEnviadoEm().toLocalDate()), c.getNome(), c.getWhatsapp(),
-                        "Oi, " + primeiro(c.getNome()) + "! Tudo bem? Conseguiu ver a arte da sua encomenda ("
+                        "Oi, " + saudacao(c) + "! Tudo bem? Conseguiu ver a arte da sua encomenda ("
                                 + e.getDescricao() + ")? Só começo a produzir depois da sua aprovação: " + link
                                 + " " + assinatura(cfg), hoje));
             }
@@ -97,13 +97,13 @@ public class LembreteService {
             if (e.getStatus() == StatusEncomenda.PRONTA) {
                 todos.add(new LembreteResp("PRONTA:" + e.getId(), "PRONTA", "Peça pronta: " + e.getDescricao(),
                         saldo.signum() > 0 ? "Saldo de " + moeda(saldo) : "Quitada", c.getNome(), c.getWhatsapp(),
-                        "Oi, " + primeiro(c.getNome()) + "! Sua encomenda (" + e.getDescricao() + ") está pronta!"
+                        "Oi, " + saudacao(c) + "! Sua encomenda (" + e.getDescricao() + ") está pronta!"
                                 + textoSaldo + " Quando fica bom para você buscar? " + assinatura(cfg), hoje));
             } else if (e.getStatus() == StatusEncomenda.EM_PRODUCAO && e.getPrazoEntrega() != null
                     && e.getPrazoEntrega().equals(hoje.plusDays(1))) {
                 todos.add(new LembreteResp("ENTREGA:" + e.getId() + ":" + e.getPrazoEntrega(), "ENTREGA",
                         "Entrega amanhã: " + e.getDescricao(), "Ainda em produção", c.getNome(), c.getWhatsapp(),
-                        "Oi, " + primeiro(c.getNome()) + "! Tudo certo para a entrega da sua encomenda ("
+                        "Oi, " + saudacao(c) + "! Tudo certo para a entrega da sua encomenda ("
                                 + e.getDescricao() + ") amanhã, " + DIA.format(e.getPrazoEntrega())
                                 + "? Me confirma o melhor horário para você. " + assinatura(cfg), e.getPrazoEntrega()));
             } else if (e.getStatus() == StatusEncomenda.ENTREGUE && saldo.signum() <= 0 && e.getEntregueEm() != null
@@ -111,13 +111,13 @@ public class LembreteService {
                 // Alguns dias depois da entrega (e já quitada): pedir um depoimento para o site
                 todos.add(new LembreteResp("DEPOIMENTO:" + e.getId(), "DEPOIMENTO", "Pedir depoimento: " + e.getDescricao(),
                         "Entregue em " + DIA.format(e.getEntregueEm()), c.getNome(), c.getWhatsapp(),
-                        "Oi, " + primeiro(c.getNome()) + "! Tudo bem? Espero que esteja gostando da sua peça ("
+                        "Oi, " + saudacao(c) + "! Tudo bem? Espero que esteja gostando da sua peça ("
                                 + e.getDescricao() + "). Se puder, me conta em poucas palavras o que achou? Com a sua "
                                 + "permissão, coloco no site do ateliê. Obrigada pelo carinho! " + assinatura(cfg), hoje));
             } else if (e.getStatus() == StatusEncomenda.ENTREGUE && saldo.signum() > 0) {
                 todos.add(new LembreteResp("SALDO:" + e.getId(), "SALDO", "Saldo em aberto: " + e.getDescricao(),
                         moeda(saldo) + " a receber", c.getNome(), c.getWhatsapp(),
-                        "Oi, " + primeiro(c.getNome()) + "! Tudo bem? Passando para lembrar do saldo de "
+                        "Oi, " + saudacao(c) + "! Tudo bem? Passando para lembrar do saldo de "
                                 + moeda(saldo) + " da sua encomenda (" + e.getDescricao() + ")."
                                 + (cfg.getChavePix() != null ? " Pode ser pelo Pix " + cfg.getChavePix() + "." : "")
                                 + " Obrigada! " + assinatura(cfg), hoje));
@@ -167,6 +167,12 @@ public class LembreteService {
         });
         l.setEnviadoEm(LocalDateTime.now());
         repo.save(l);
+    }
+
+    /** Escola e empresa pelo nome completo ("Oi, Escola Pequeno Príncipe!"); pessoa pelo primeiro nome. */
+    private static String saudacao(Cliente c) {
+        return c.getTipo() == br.com.joeljunior.atelie.dominio.Enums.TipoCliente.ESCOLA
+                || c.getTipo() == br.com.joeljunior.atelie.dominio.Enums.TipoCliente.EMPRESA ? c.getNome().trim() : primeiro(c.getNome());
     }
 
     private static String primeiro(String nome) {

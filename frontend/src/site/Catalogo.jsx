@@ -39,12 +39,12 @@ export function CartaoPeca({ i, aoAbrir, naSacola, selo, aoAdicionar }) {
   const pronta = i.prontaEntrega && i.disponiveis > 0;
   return (
     <article className="produto">
-      <button type="button" className="produto-foto" onClick={aoAbrir} aria-label={`Ver detalhes: ${i.nome}`}>
+      <button type="button" className="produto-foto" onClick={() => aoAbrir(i)} aria-label={`Ver detalhes: ${i.nome}`}>
         {i.fotos[0] ? <img src={i.fotos[0]} alt="" loading="lazy" /> : <SemImagem />}
         {selo ? <span className="produto-selo">{selo}</span>
           : pronta ? <span className="produto-selo verde">{i.disponiveis} {i.disponiveis === 1 ? 'pronta' : 'prontas'}</span> : null}
       </button>
-      <button type="button" className="produto-nome" onClick={aoAbrir}>{i.nome}</button>
+      <button type="button" className="produto-nome" onClick={() => aoAbrir(i)}>{i.nome}</button>
       <div className="produto-rodape">
         <span className="produto-preco">
           {i.preco != null && !pronta && <small>a partir de</small>}
